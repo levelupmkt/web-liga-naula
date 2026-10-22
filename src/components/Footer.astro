@@ -1,0 +1,74 @@
+---
+import { footer, nav } from '../content/site';
+
+interface Props { home?: boolean }
+const { home = false } = Astro.props;
+const href = (id: string) => (home ? `#${id}` : `/#${id}`);
+const year = new Date().getFullYear();
+---
+<footer class="footer">
+  <div class="container">
+    <div class="footer__top">
+      <div>
+        <a class="footer__brand" href={href('inicio')}>{footer.brand}</a>
+        <p class="footer__text">{footer.text}</p>
+      </div>
+      <nav aria-label="Pie de página">
+        <ul class="footer__nav">
+          {nav.map((item) => <li><a href={href(item.id)}>{item.label}</a></li>)}
+        </ul>
+      </nav>
+    </div>
+
+    <svg class="footer__giant" viewBox="0 0 1000 152" aria-hidden="true" focusable="false">
+      <text x="0" y="140" textLength="1000" lengthAdjust="spacingAndGlyphs">SANTA ROSA</text>
+    </svg>
+
+    <div class="footer__bottom">
+      <p>© <span data-year>{year}</span> · {footer.note}</p>
+      <ul class="footer__legal">
+        <li><a href="/privacidad">Política de privacidad</a></li>
+        <li><a href="/aviso-legal">Aviso legal y fuentes</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('[data-year]').forEach((el) => (el.textContent = String(new Date().getFullYear())));
+</script>
+
+<style>
+  .footer { background: var(--ink); color: var(--white); padding-top: clamp(64px, 8vw, 96px); overflow: hidden; }
+  .footer__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 40px; }
+  .footer__brand { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 2.75rem); text-decoration: none; }
+  .footer__text { margin-top: 10px; color: #bdbdbd; max-width: 36ch; }
+  .footer__nav { display: grid; grid-template-columns: repeat(2, auto); gap: 10px 48px; list-style: none; margin: 0; padding: 0; }
+  .footer a { transition: color 150ms var(--ease); }
+  .footer__nav a, .footer__legal a { color: #e6e6e6; text-decoration: none; }
+  .footer__nav a:hover, .footer__legal a:hover, .footer__brand:hover { color: var(--orange); }
+  .footer__giant {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 56px;
+    fill: var(--orange);
+    font-family: var(--font-display);
+    font-size: 186px;
+    letter-spacing: -0.04em;
+  }
+  .footer__bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px 24px;
+    padding-block: 28px;
+    margin-top: 24px;
+    border-top: 1px solid #333;
+    font-size: 0.875rem;
+    color: #bdbdbd;
+  }
+  .footer__legal { display: flex; flex-wrap: wrap; gap: 8px 24px; list-style: none; margin: 0; padding: 0; }
+  .footer :focus-visible { outline-color: var(--orange); }
+  @media (max-width: 520px) { .footer__nav { grid-template-columns: 1fr; } }
+</style>

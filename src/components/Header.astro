@@ -1,0 +1,276 @@
+---
+import { nav, news } from '../content/site';
+import Icon from './Icon.astro';
+
+interface Props { home?: boolean }
+const { home = false } = Astro.props;
+// En páginas secundarias los anclajes apuntan a la portada.
+const href = (id: string) => (home ? `#${id}` : `/#${id}`);
+const social = news.socialLinks.filter((s) => s.verified);
+---
+<header class="site-header" data-header>
+  <div class="container bar">
+    <a class="brand" href={href('inicio')} aria-label="Ligia Naula — ir al inicio">
+      <span class="brand__mark" aria-hidden="true">L</span>
+      <span class="brand__name">Ligia Naula</span>
+    </a>
+
+    <nav class="nav" aria-label="Principal">
+      <ul>
+        {nav.map((item) => (
+          <li><a href={href(item.id)} data-nav={item.id}>{item.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+
+    {social.length > 0 && (
+      <ul class="social" aria-label="Redes sociales">
+        {social.map((s) => (
+          <li><a href={s.url} target="_blank" rel="noopener noreferrer">{s.platform}</a></li>
+        ))}
+      </ul>
+    )}
+
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-open>
+      <Icon name="menu" size={22} />
+      <span class="sr-only">Abrir menú</span>
+    </button>
+  </div>
+</header>
+
+<div class="mobile-nav" id="mobile-nav" role="dialog" aria-modal="true" aria-label="Menú" hidden data-mobile-nav>
+  <div class="mobile-nav__top container">
+    <span class="brand"><span class="brand__mark" aria-hidden="true">L</span><span class="brand__name">Ligia Naula</span></span>
+    <button class="menu-btn menu-btn--close" type="button" data-menu-close>
+      <Icon name="close" size={22} />
+      <span class="sr-only">Cerrar menú</span>
+    </button>
+  </div>
+  <nav class="container" aria-label="Principal (móvil)">
+    <ol>
+      {nav.map((item, i) => (
+        <li style={`--i:${i}`}>
+          <a href={href(item.id)} data-nav={item.id}>
+            <span class="num">{String(i + 1).padStart(2, '0')}</span>{item.label}
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+  <p class="container mobile-nav__foot">Santa Rosa · El Oro · Ecuador</p>
+</div>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgb(255 255 255 / 0.86);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 250ms var(--ease), box-shadow 250ms var(--ease);
+  }
+  .site-header.is-compact {
+    border-color: var(--line);
+    box-shadow: 0 6px 24px -18px rgb(0 0 0 / 0.4);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: var(--header-h);
+    transition: height 250ms var(--ease);
+  }
+  .is-compact .bar { height: 60px; }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    margin-right: auto;
+  }
+  .brand__mark {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--orange);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    transition: transform 300ms var(--ease);
+  }
+  .brand:hover .brand__mark { transform: rotate(-8deg); }
+  .brand__name {
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    letter-spacing: -0.01em;
+  }
+
+  .nav ul { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+  .nav a {
+    position: relative;
+    display: block;
+    padding: 10px 12px;
+    font-size: 0.9375rem;
+    text-decoration: none;
+    color: var(--ink-soft);
+    border-radius: 999px;
+    transition: color 150ms var(--ease), background-color 150ms var(--ease);
+  }
+  .nav a:hover { color: var(--ink); background: var(--surface); }
+  .nav a[aria-current='true'] { color: var(--ink); }
+  .nav a::after {
+    content: '';
+    position: absolute;
+    left: 12px; right: 12px; bottom: 4px;
+    height: 2px;
+    background: var(--orange);
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 250ms var(--ease);
+  }
+  .nav a[aria-current='true']::after { transform: scaleX(1); }
+
+  .social { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
+
+  .menu-btn {
+    display: none;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--white);
+    cursor: pointer;
+    transition: transform 150ms var(--ease);
+  }
+  .menu-btn:active { transform: scale(0.94); }
+
+  @media (max-width: 1023px) {
+    .nav, .social { display: none; }
+    .menu-btn { display: grid; }
+  }
+
+  /* Menú móvil */
+  .mobile-nav {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    background: var(--orange);
+    color: var(--ink);
+    overflow-y: auto;
+  }
+  .mobile-nav[hidden] { display: none; }
+  .mobile-nav__top { display: flex; align-items: center; height: var(--header-h); }
+  .menu-btn--close { display: grid; }
+  .mobile-nav ol { list-style: none; margin: 24px 0 0; padding: 0; }
+  .mobile-nav li { border-top: 1px solid rgb(0 0 0 / 0.16); }
+  .mobile-nav li:last-child { border-bottom: 1px solid rgb(0 0 0 / 0.16); }
+  .mobile-nav ol a {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 16px 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 8vw, 2.5rem);
+    line-height: 1.1;
+    text-decoration: none;
+  }
+  .mobile-nav .num { font-family: var(--font-body); font-size: 0.875rem; opacity: 0.7; }
+  .mobile-nav .brand__mark { background: var(--ink); color: var(--orange); }
+  .mobile-nav ol a::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    margin-left: auto;
+    align-self: center;
+    border-radius: 50%;
+    background: var(--ink);
+    transform: scale(0);
+    transition: transform 200ms var(--ease);
+  }
+  .mobile-nav ol a[aria-current='true']::after { transform: scale(1); }
+  .mobile-nav__foot { margin-top: auto; padding-block: 28px; font-size: 0.875rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .mobile-nav.is-open { animation: navIn 300ms var(--ease); }
+    .mobile-nav.is-open li { animation: itemIn 350ms var(--ease) both; animation-delay: calc(60ms + var(--i) * 35ms); }
+    @keyframes navIn { from { opacity: 0; } }
+    @keyframes itemIn { from { opacity: 0; transform: translateY(12px); } }
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]')!;
+  const panel = document.querySelector<HTMLElement>('[data-mobile-nav]')!;
+  const openBtn = document.querySelector<HTMLButtonElement>('[data-menu-open]')!;
+  const closeBtn = document.querySelector<HTMLButtonElement>('[data-menu-close]')!;
+
+  // Header compacto al hacer scroll
+  const onScroll = () => header.classList.toggle('is-compact', window.scrollY > 24);
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // Menú móvil accesible
+  const focusables = () =>
+    Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'));
+
+  function openMenu() {
+    panel.hidden = false;
+    panel.classList.add('is-open');
+    openBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+  }
+  function closeMenu(restoreFocus = true) {
+    panel.hidden = true;
+    panel.classList.remove('is-open');
+    openBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    if (restoreFocus) openBtn.focus();
+  }
+
+  openBtn.addEventListener('click', openMenu);
+  closeBtn.addEventListener('click', () => closeMenu());
+  panel.querySelectorAll('nav a').forEach((a) => a.addEventListener('click', () => closeMenu(false)));
+  panel.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu();
+    if (e.key === 'Tab') {
+      const items = focusables();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  window.matchMedia('(min-width: 1024px)').addEventListener('change', (m) => {
+    if (m.matches && !panel.hidden) closeMenu(false);
+  });
+
+  // Sección activa en el menú
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-nav]');
+  const sections = Array.from(links)
+    .map((l) => document.getElementById(l.dataset.nav!))
+    .filter((s, i, arr): s is HTMLElement => !!s && arr.indexOf(s) === i);
+
+  if (sections.length) {
+    const setActive = (id: string) =>
+      links.forEach((l) => l.setAttribute('aria-current', String(l.dataset.nav === id)));
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length) setActive((visible[0].target as HTMLElement).id);
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    sections.forEach((s) => io.observe(s));
+  }
+</script>

@@ -1,0 +1,121 @@
+---
+// Diálogo de detalle accesible (usa <dialog> nativo: foco atrapado y Escape).
+// Se abre con cualquier botón que tenga data-dialog-open="<id>".
+interface Props { id: string; title: string; eyebrow?: string }
+const { id, title, eyebrow } = Astro.props;
+---
+<dialog class="detail" id={id} aria-labelledby={`${id}-title`}>
+  <div class="detail__inner">
+    <header class="detail__head">
+      <div>
+        {eyebrow && <p class="detail__eyebrow">{eyebrow}</p>}
+        <h3 id={`${id}-title`} class="detail__title">{title}</h3>
+      </div>
+      <button class="detail__close" type="button" data-dialog-close>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+        <span class="sr-only">Cerrar</span>
+      </button>
+    </header>
+    <div class="detail__body">
+      <slot />
+    </div>
+  </div>
+</dialog>
+
+<style is:global>
+  .detail {
+    width: min(680px, calc(100vw - 32px));
+    max-height: calc(100dvh - 48px);
+    padding: 0;
+    border: 0;
+    border-radius: 24px;
+    background: var(--white);
+    color: var(--ink);
+    box-shadow: 0 40px 100px -30px rgb(0 0 0 / 0.5);
+  }
+  .detail::backdrop { background: rgb(22 22 22 / 0.6); backdrop-filter: blur(4px); }
+  .detail__inner { display: flex; flex-direction: column; max-height: inherit; }
+  .detail__head {
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 28px 28px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--orange);
+  }
+  .detail__eyebrow { font-size: 0.8125rem; letter-spacing: 0.12em; text-transform: uppercase; }
+  .detail__title { font-size: clamp(1.5rem, 3.4vw, 2rem); line-height: 1.08; margin-top: 8px; }
+  .detail__close {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--white);
+    cursor: pointer;
+    transition: transform 150ms var(--ease);
+  }
+  .detail__close:hover { transform: rotate(90deg); }
+  .detail__body { padding: 24px 28px 32px; overflow-y: auto; display: grid; gap: 18px; }
+  .detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 10px 20px; margin: 0; font-size: 0.9375rem; }
+  .detail dt { color: var(--ink-soft); }
+  .detail dd { margin: 0; }
+  .detail__note {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 0.9375rem;
+    color: var(--ink-soft);
+  }
+  .detail__note svg { flex-shrink: 0; margin-top: 3px; color: var(--orange-ink); }
+  .detail__sources { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 0.9375rem; }
+  .detail h4 { font-family: var(--font-body); font-size: 0.8125rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .detail[open] { animation: dialogIn 280ms var(--ease); }
+    .detail[open]::backdrop { animation: fadeIn 280ms var(--ease); }
+    @keyframes dialogIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
+    @keyframes fadeIn { from { opacity: 0; } }
+  }
+  @media (max-width: 560px) {
+    .detail dl { grid-template-columns: 1fr; gap: 2px; }
+    .detail dd { margin-bottom: 10px; }
+  }
+</style>
+
+<script>
+  // Astro incluye este script una sola vez aunque haya varios diálogos en la página.
+  let opener: HTMLElement | null = null;
+
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const openBtn = target.closest<HTMLElement>('[data-dialog-open]');
+    if (openBtn) {
+      const dialog = document.getElementById(openBtn.dataset.dialogOpen!) as HTMLDialogElement | null;
+      if (dialog) {
+        opener = openBtn;
+        dialog.showModal();
+      }
+      return;
+    }
+    if (target.closest('[data-dialog-close]')) {
+      target.closest('dialog')?.close();
+      return;
+    }
+    // Clic en el fondo cierra
+    if (target instanceof HTMLDialogElement && target.open) target.close();
+  });
+
+  document.querySelectorAll('dialog.detail').forEach((d) =>
+    d.addEventListener('close', () => {
+      opener?.focus();
+      opener = null;
+    }),
+  );
+</script>

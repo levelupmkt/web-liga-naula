@@ -1,0 +1,170 @@
+---
+import { Image } from 'astro:assets';
+import { news, formatDate } from '../content/site';
+import SectionHeading from './SectionHeading.astro';
+import Icon from './Icon.astro';
+
+const posts = news.posts.filter((p) => p.verified).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+const social = news.socialLinks.filter((s) => s.verified);
+const digital = news.digitalMetrics.filter((m) => m.verified);
+---
+<section id="actualidad" class="section news" aria-labelledby="news-title">
+  <div class="container">
+    <div class="news__head">
+      <SectionHeading kicker="Novedades" title={news.title} lead={news.lead} id="news-title" />
+      <p class="news__text" data-reveal>{news.text}</p>
+    </div>
+
+    <h3 class="news__sub" data-reveal>Últimas publicaciones</h3>
+
+    {posts.length > 0 ? (
+      <ul class="posts">
+        {posts.map((p, i) => (
+          <li class="post" data-reveal style={`--delay:${i * 80}ms`}>
+            {p.image && (
+              <Image src={p.image.src} alt={p.image.alt} widths={[400, 700]} sizes="(min-width: 1024px) 33vw, 100vw" class="post__img" />
+            )}
+            <div class="post__body">
+              <p class="post__meta"><span class="tag">{p.category}</span> <time datetime={p.date}>{formatDate(p.date)}</time></p>
+              <h4 class="post__title">{p.title}</h4>
+              <p class="post__summary">{p.summary}</p>
+              <a class="link" href={p.url} target="_blank" rel="noopener noreferrer">
+                Ver publicación <Icon name="external" size={14} />
+                <span class="sr-only">(se abre en una pestaña nueva)</span>
+              </a>
+            </div>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class="news__empty" data-reveal>
+        <div class="news__ghosts" aria-hidden="true">
+          {[0, 1, 2].map(() => (
+            <div class="ghost"><span class="ghost__img"></span><span class="ghost__line"></span><span class="ghost__line ghost__line--s"></span></div>
+          ))}
+        </div>
+        <div class="news__empty-msg">
+          <span class="news__icon"><Icon name="newspaper" size={26} /></span>
+          <p>{news.empty}</p>
+        </div>
+      </div>
+    )}
+
+    <div class="news__row">
+      <div class="panel" data-reveal>
+        <h3 class="panel__title">{news.socialTitle}</h3>
+        {social.length > 0 ? (
+          <ul class="social-list">
+            {social.map((s) => (
+              <li>
+                <a href={s.url} target="_blank" rel="noopener noreferrer">
+                  <span>{s.platform}</span><span class="social-list__handle">{s.handle}</span>
+                  <Icon name="arrow-up-right" size={18} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="panel__empty"><span class="tag tag--pending">Pendiente de verificación</span> {news.socialEmpty}</p>
+        )}
+      </div>
+
+      {digital.length > 0 && (
+        <div class="panel" data-reveal>
+          <h3 class="panel__title">Presencia digital en cifras</h3>
+          <ul class="digital">
+            {digital.map((m) => (
+              <li>
+                <strong>{m.value.toLocaleString('es-EC')}</strong>
+                <span>{m.label}{m.platform && ` · ${m.platform}`}</span>
+                <small>
+                  {m.periodStart && m.periodEnd && `${formatDate(m.periodStart)} – ${formatDate(m.periodEnd)} · `}
+                  Corte: {formatDate(m.asOf)} · Fuente: {m.source}
+                </small>
+              </li>
+            ))}
+          </ul>
+          <p class="panel__note">{news.digitalMetricsNote}</p>
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
+<style>
+  .news__head {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 24px 64px;
+    align-items: end;
+  }
+  .news__text { color: var(--ink-soft); max-width: 46ch; }
+  .news__sub {
+    margin-top: 56px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .posts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; list-style: none; margin: 20px 0 0; padding: 0; }
+  .post { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: var(--white); }
+  .post__img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+  .post__body { display: grid; gap: 10px; padding: 22px; }
+  .post__meta { display: flex; gap: 10px; align-items: center; font-size: 0.875rem; color: var(--ink-soft); }
+  .post__title { font-size: 1.375rem; line-height: 1.12; }
+  .post__summary { color: var(--ink-soft); font-size: 0.9375rem; }
+
+  .news__empty {
+    position: relative;
+    margin-top: 20px;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .news__ghosts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; opacity: 0.55; }
+  .ghost { display: grid; gap: 12px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--line); }
+  .ghost__img { aspect-ratio: 16 / 10; border-radius: 12px; background: var(--surface); }
+  .ghost__line { height: 12px; border-radius: 6px; background: var(--surface); }
+  .ghost__line--s { width: 60%; }
+  .news__empty-msg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+    line-height: 1.2;
+    background: radial-gradient(closest-side, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.6));
+  }
+  .news__empty-msg p { max-width: 24ch; }
+  .news__icon { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--orange); }
+
+  .news__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 20px; margin-top: 48px; }
+  .panel { padding: 28px; border-radius: var(--radius); background: var(--surface); }
+  .panel__title { font-size: 1.5rem; text-transform: uppercase; }
+  .panel__empty { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; color: var(--ink-soft); }
+  .panel__note { margin-top: 16px; font-size: 0.875rem; color: var(--ink-soft); }
+  .social-list { list-style: none; margin: 16px 0 0; padding: 0; }
+  .social-list a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
+  .social-list__handle { color: var(--ink-soft); margin-left: auto; }
+  .digital { display: grid; gap: 16px; list-style: none; margin: 16px 0 0; padding: 0; }
+  .digital li { display: grid; }
+  .digital strong { font-family: var(--font-display); font-weight: 500; font-size: 2rem; }
+  .digital small { color: var(--ink-soft); }
+
+  @media (max-width: 1023px) {
+    .news__head { grid-template-columns: 1fr; }
+    .posts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767px) {
+    .posts { grid-template-columns: 1fr; }
+    .news__ghosts { grid-template-columns: 1fr; }
+    .news__ghosts .ghost:nth-child(n + 2) { display: none; }
+  }
+</style>

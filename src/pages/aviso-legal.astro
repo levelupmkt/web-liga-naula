@@ -1,0 +1,26 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import SourceLink from '../components/SourceLink.astro';
+import { sources } from '../content/site';
+---
+<LegalLayout title="Aviso legal y fuentes" description="Propiedad editorial, fuentes y condiciones del sitio informativo de Ligia Naula (borrador).">
+  <p>
+    Este sitio es un <strong>prototipo informativo en desarrollo</strong>. No es un sitio oficial ni ha sido aprobado
+    para su publicación. Los datos de la persona o entidad responsable, su domicilio y las condiciones de uso se
+    incorporarán cuando sean confirmados.
+  </p>
+  <h2>Contenidos</h2>
+  <p>
+    La información publicada procede de documentos y referencias públicas. Su inclusión tiene fines informativos y no implica
+    atribuir individualmente a una persona la elaboración, aprobación o ejecución de todo lo descrito en dichos documentos.
+    Los contenidos marcados como «Pendiente de verificación» están sujetos a revisión editorial.
+  </p>
+  <h2>Fuentes consultadas</h2>
+  <p>Las fechas de publicación de los documentos en buscadores pueden no coincidir con la fecha del acto que documentan.</p>
+  <ul>
+    {Object.values(sources).map((s) => <li><SourceLink source={s} /></li>)}
+  </ul>
+  <h2>Fotografías</h2>
+  <p>Las fotografías se utilizan con autorización pendiente de confirmación formal por parte de sus titulares.</p>
+  <p><em>Pendiente de revisión por la persona responsable del sitio y asesoría jurídica ecuatoriana antes de su publicación.</em></p>
+</LegalLayout>

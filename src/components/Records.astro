@@ -1,0 +1,238 @@
+---
+import { records, metrics, formatDate } from '../content/site';
+import SectionHeading from './SectionHeading.astro';
+import SourceLink from './SourceLink.astro';
+import DetailDialog from './DetailDialog.astro';
+import Icon from './Icon.astro';
+
+const items = records.items
+  .filter((r) => r.published)
+  .sort((a, b) => b.date.localeCompare(a.date));
+const verifiedMetrics = metrics.filter((m) => m.verified);
+---
+<section id="trayectoria" class="section records" aria-labelledby="records-title">
+  <div class="container">
+    <div class="records__head">
+      <SectionHeading kicker="Registro documental" title={records.title} lead={records.lead} id="records-title" />
+      <p class="records__intro" data-reveal>{records.intro}</p>
+    </div>
+
+    <div class="filters" role="group" aria-label="Filtrar registros por categoría" data-reveal>
+      {records.filters.map((f, i) => (
+        <button type="button" class="filter" aria-pressed={i === 0 ? 'true' : 'false'} data-filter={f}>
+          {f}
+        </button>
+      ))}
+    </div>
+
+    <p class="sr-only" aria-live="polite" data-filter-status></p>
+
+    <ul class="cards" data-cards>
+      {items.map((r, i) => (
+        <li class="card" data-category={r.category} data-reveal style={`--delay:${i * 80}ms`}>
+          <div class="card__top">
+            <span class="tag tag--dark">{r.category}</span>
+            <span class="card__label"><Icon name="file" size={16} /> {r.label}</span>
+          </div>
+          <p class="card__date"><Icon name="calendar" size={16} /> <time datetime={r.date}>{formatDate(r.date)}</time></p>
+          <h3 class="card__title">{r.title}</h3>
+          <p class="card__summary">{r.summary}</p>
+          <div class="card__actions">
+            <a class="btn btn--orange card__btn" href={r.sources[0].url} target="_blank" rel="noopener noreferrer">
+              Consultar fuente <Icon name="external" size={16} />
+              <span class="sr-only">(se abre en una pestaña nueva)</span>
+            </a>
+            <button class="card__more" type="button" data-dialog-open={`ficha-${r.id}`}>
+              Ver ficha
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+
+    <div class="empty" hidden data-empty>
+      <Icon name="file" size={28} />
+      <p>{records.emptyCategory}</p>
+    </div>
+
+    {verifiedMetrics.length > 0 && (
+      <div class="metrics">
+        <h3 class="metrics__title">La información en cifras</h3>
+        <ul>
+          {verifiedMetrics.map((m) => (
+            <li>
+              <strong>{m.value.toLocaleString('es-EC')}{m.unit && ` ${m.unit}`}</strong>
+              <span>{m.label}</span>
+              <small>Fuente: {m.source} · Corte: {formatDate(m.asOf)}</small>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+
+  {items.map((r) => (
+    <DetailDialog id={`ficha-${r.id}`} title={r.title} eyebrow={r.category}>
+      <dl>
+        <dt>Fecha</dt><dd><time datetime={r.date}>{formatDate(r.date)}</time></dd>
+        <dt>Categoría</dt><dd>{r.category}</dd>
+        {r.roleAtTime && <><dt>Cargo en ese momento</dt><dd>{r.roleAtTime}</dd></>}
+        <dt>Tipo de registro</dt><dd>{r.label}</dd>
+        <dt>Actualizado</dt><dd><time datetime={r.updatedAt}>{formatDate(r.updatedAt)}</time></dd>
+      </dl>
+      <p>{r.summary}</p>
+      {r.attributionNote && (
+        <p class="detail__note"><Icon name="info" size={18} /> {r.attributionNote}</p>
+      )}
+      <div>
+        <h4>Fuentes</h4>
+        <ul class="detail__sources">
+          {r.sources.map((s) => <li><SourceLink source={s} /></li>)}
+        </ul>
+      </div>
+    </DetailDialog>
+  ))}
+</section>
+
+<style>
+  .records { background: var(--surface); }
+  .records__head {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 24px 64px;
+    align-items: end;
+  }
+  .records__intro { color: var(--ink-soft); max-width: 46ch; }
+
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-top: 48px;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid #c4c4c4;
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: background-color 200ms var(--ease), border-color 200ms var(--ease), color 200ms var(--ease);
+  }
+  .filter:hover { border-color: var(--ink); }
+  .filter[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--white); }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    list-style: none;
+    margin: 32px 0 0;
+    padding: 0;
+  }
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 28px;
+    border-radius: var(--radius);
+    background: var(--white);
+    border: 1px solid var(--line);
+    transition: transform 250ms var(--ease), box-shadow 250ms var(--ease), border-color 250ms var(--ease);
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 28px; right: 28px;
+    height: 4px;
+    border-radius: 0 0 4px 4px;
+    background: var(--orange);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 300ms var(--ease);
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .card:hover::before { transform: scaleX(1); }
+  .card[hidden] { display: none; }
+  .card__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+  .card__label, .card__date { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--ink-soft); }
+  .card__date { margin-top: 24px; }
+  .card__title { margin-top: 10px; font-size: 1.5rem; line-height: 1.1; }
+  .card__summary { margin-top: 12px; color: var(--ink-soft); font-size: 0.9875rem; flex-grow: 1; }
+  .card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 24px; }
+  .card__btn { min-height: 46px; padding: 0 20px; font-size: 0.9375rem; }
+  .card__more {
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+  }
+  .card__more:hover { color: var(--orange-ink); }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 32px;
+    padding: 56px 24px;
+    border: 2px dashed #c4c4c4;
+    border-radius: var(--radius);
+    text-align: center;
+    color: var(--ink-soft);
+  }
+  .empty[hidden] { display: none; }
+
+  .metrics { margin-top: 64px; }
+  .metrics__title { font-size: 1.75rem; text-transform: uppercase; }
+  .metrics ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; list-style: none; margin: 24px 0 0; padding: 0; }
+  .metrics li { display: grid; gap: 4px; padding: 24px; border-radius: var(--radius); background: var(--white); }
+  .metrics strong { font-family: var(--font-display); font-size: 2.5rem; font-weight: 500; }
+  .metrics small { color: var(--ink-soft); }
+
+  @media (max-width: 1023px) {
+    .records__head { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767px) {
+    .cards { grid-template-columns: 1fr; }
+    .card { padding: 22px; }
+    .filters { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
+  }
+</style>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+  const cards = document.querySelectorAll<HTMLElement>('[data-cards] > [data-category]');
+  const empty = document.querySelector<HTMLElement>('[data-empty]')!;
+  const status = document.querySelector<HTMLElement>('[data-filter-status]')!;
+
+  buttons.forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.filter!;
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      let shown = 0;
+      cards.forEach((card) => {
+        const match = value === 'Todos' || card.dataset.category === value;
+        card.hidden = !match;
+        if (match) {
+          shown++;
+          card.classList.add('is-visible');
+        }
+      });
+      empty.hidden = shown > 0;
+      status.textContent =
+        shown > 0 ? `${shown} ${shown === 1 ? 'registro' : 'registros'} en «${value}».` : `Sin registros en «${value}».`;
+    }),
+  );
+</script>

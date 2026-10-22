@@ -1,0 +1,16 @@
+---
+interface Props { kicker: string; title: string; lead?: string; id?: string; tone?: 'light' | 'dark'; align?: 'left' | 'center' }
+const { kicker, title, lead, id, tone = 'light', align = 'left' } = Astro.props;
+---
+<header class:list={['heading', `heading--${tone}`, `heading--${align}`]} data-reveal>
+  <span class="kicker">{kicker}</span>
+  <h2 class="h2" id={id}>{title}</h2>
+  {lead && <p class="lead">{lead}</p>}
+</header>
+
+<style>
+  .heading--center { text-align: center; }
+  .heading--center .lead { margin-inline: auto; }
+  .heading--dark .kicker { color: var(--orange); }
+  .heading--dark .lead { color: #c9c9c9; }
+</style>

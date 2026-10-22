@@ -1,0 +1,227 @@
+---
+import { Image } from 'astro:assets';
+import { hero, photos, status } from '../content/site';
+import Icon from './Icon.astro';
+
+const [first, ...rest] = hero.title.split(' ');
+const ring = 'Santa Rosa · El Oro · Ecuador · ';
+---
+<section id="inicio" class="hero" aria-labelledby="hero-title">
+  <!-- Referencia gráfica abstracta: líneas de costa / curvas de nivel (sin símbolos oficiales) -->
+  <svg class="hero__lines" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    {Array.from({ length: 9 }, (_, i) => (
+      <path
+        d={`M-50 ${560 + i * 34} C 220 ${470 + i * 30}, 420 ${660 + i * 22}, 700 ${540 + i * 26} S 1100 ${420 + i * 30}, 1260 ${500 + i * 28}`}
+      />
+    ))}
+  </svg>
+
+  <div class="container hero__grid">
+    <div class="hero__copy">
+      <p class="hero__eyebrow">{hero.eyebrow}</p>
+      <h1 id="hero-title" class="hero__title">
+        <span>{first}</span>
+        <span class="hero__title-2">{rest.join(' ')}</span>
+      </h1>
+      <p class="hero__subtitle">{hero.subtitle}</p>
+      <p class="hero__text">{hero.text}</p>
+      <div class="hero__actions">
+        <a class="btn" href={hero.primary.href}>
+          {hero.primary.label}
+          <Icon name="arrow-right" size={18} />
+        </a>
+        <a class="btn btn--ghost" href={hero.secondary.href}>{hero.secondary.label}</a>
+      </div>
+      {status.draft && (
+        <p class="hero__status"><Icon name="clock" size={16} /> {hero.updatingLabel}</p>
+      )}
+    </div>
+
+    <div class="hero__media">
+      <div class="hero__frame">
+        <Image
+          src={photos.hero.src}
+          alt={photos.hero.alt}
+          widths={[640, 960, 1280, 1600]}
+          sizes="(min-width: 1024px) 52vw, 100vw"
+          loading="eager"
+          fetchpriority="high"
+          class="hero__img"
+        />
+      </div>
+      <div class="hero__badge" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <defs><path id="ring" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0" /></defs>
+          <text><textPath href="#ring">{ring}{ring}</textPath></text>
+        </svg>
+        <span>L</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="ticker" aria-hidden="true">
+  <div class="ticker__track">
+    {Array.from({ length: 2 }, () => (
+      <div class="ticker__group">
+        {['Santa Rosa', 'Trayectoria', 'Participación', 'Gestión pública', 'El Oro', 'Información verificable'].map((w) => (
+          <span>{w}<i>✦</i></span>
+        ))}
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 85% 10%, #ff8a26 0%, transparent 55%),
+      linear-gradient(160deg, #ff7a0a 0%, var(--orange) 45%, #f26c00 100%);
+    color: var(--ink);
+    padding-block: clamp(40px, 6vw, 88px) clamp(56px, 7vw, 104px);
+  }
+  .hero__lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: rgb(255 255 255 / 0.28);
+    stroke-width: 1.25;
+    pointer-events: none;
+  }
+
+  .hero__grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: clamp(32px, 4vw, 56px) 24px;
+    align-items: center;
+  }
+  .hero__copy { grid-column: 1 / span 6; }
+  .hero__media { grid-column: 7 / span 6; position: relative; }
+
+  .hero__eyebrow {
+    font-size: 0.875rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .hero__title {
+    display: flex;
+    flex-direction: column;
+    margin-top: 18px;
+    font-size: clamp(4.25rem, 11vw, 9.5rem);
+    line-height: 0.86;
+    letter-spacing: -0.035em;
+    text-transform: uppercase;
+  }
+  .hero__title-2 {
+    align-self: flex-start;
+    background: linear-gradient(var(--white), var(--white)) 0 92% / 100% 0.12em no-repeat;
+    padding-bottom: 0.06em;
+  }
+  .hero__subtitle {
+    margin-top: 28px;
+    font-family: var(--font-display);
+    font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+    line-height: 1.2;
+    max-width: 22ch;
+  }
+  .hero__text { margin-top: 16px; max-width: 48ch; font-size: 1.0625rem; }
+  .hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+  .hero__actions .btn--ghost:hover { background: var(--ink); color: var(--orange); }
+  .hero__actions .btn:not(.btn--ghost):hover { background: var(--white); border-color: var(--white); color: var(--ink); }
+  .hero__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 28px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.9);
+    font-size: 0.8125rem;
+  }
+
+  .hero__frame {
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    aspect-ratio: 4 / 4.4;
+    box-shadow: 0 40px 80px -40px rgb(80 30 0 / 0.55);
+    border: 6px solid var(--white);
+    transform: rotate(1.5deg);
+  }
+  .hero__img { width: 100%; height: 100%; object-fit: cover; object-position: 38% 50%; }
+
+  .hero__badge {
+    position: absolute;
+    left: -36px;
+    bottom: -30px;
+    width: 128px;
+    height: 128px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--white);
+  }
+  .hero__badge svg {
+    position: absolute;
+    inset: 4px;
+    width: calc(100% - 8px);
+    height: calc(100% - 8px);
+    fill: var(--white);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .hero__badge span { font-family: var(--font-display); font-size: 2.5rem; color: var(--orange); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero__badge svg { animation: spin 22s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hero__copy > * { animation: rise 800ms var(--ease) both; }
+    .hero__copy > :nth-child(2) { animation-delay: 80ms; }
+    .hero__copy > :nth-child(3) { animation-delay: 160ms; }
+    .hero__copy > :nth-child(4) { animation-delay: 220ms; }
+    .hero__copy > :nth-child(5) { animation-delay: 280ms; }
+    .hero__copy > :nth-child(6) { animation-delay: 340ms; }
+    .hero__frame { animation: frameIn 1000ms var(--ease) both 120ms; }
+    @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+    @keyframes frameIn { from { opacity: 0; transform: rotate(4deg) translateY(30px) scale(0.97); } }
+  }
+
+  @media (max-width: 1023px) {
+    .hero__copy, .hero__media { grid-column: 1 / -1; }
+    .hero__frame { aspect-ratio: 4 / 3; transform: none; }
+    .hero__badge { left: auto; right: 12px; bottom: -36px; width: 104px; height: 104px; }
+    .hero__badge span { font-size: 2rem; }
+  }
+
+  /* Cinta */
+  .ticker {
+    overflow: hidden;
+    background: var(--ink);
+    color: var(--white);
+    padding-block: 18px;
+  }
+  .ticker__track { display: flex; width: max-content; }
+  .ticker__group { display: flex; flex-shrink: 0; }
+  .ticker span {
+    display: inline-flex;
+    align-items: center;
+    gap: 28px;
+    padding-right: 28px;
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .ticker i { font-style: normal; color: var(--orange); font-size: 0.8em; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ticker__track { animation: marquee 38s linear infinite; }
+    @keyframes marquee { to { transform: translateX(-50%); } }
+  }
+</style>

@@ -1,0 +1,269 @@
+---
+import { contact, status } from '../content/site';
+import SectionHeading from './SectionHeading.astro';
+import Icon from './Icon.astro';
+
+// En producción se ocultan los canales sin dato confirmado.
+const channels = contact.channels.filter((c) => c.value || status.draft);
+const isDemo = !contact.formEndpoint;
+---
+<section id="contacto" class="section contact" aria-labelledby="contact-title">
+  <div class="container contact__grid">
+    <div class="contact__info">
+      <SectionHeading kicker="Canales" title={contact.title} lead={contact.lead} id="contact-title" />
+      <p class="contact__text" data-reveal>{contact.text}</p>
+
+      <ul class="channels" data-reveal>
+        {channels.map((c) => (
+          <li>
+            <span class="channels__icon"><Icon name={c.icon as 'mail'} size={20} /></span>
+            <span class="channels__label">{c.label}</span>
+            {c.value ? (
+              c.href ? <a class="channels__value" href={c.href}>{c.value}</a> : <span class="channels__value">{c.value}</span>
+            ) : (
+              <span class="channels__value channels__value--pending">{c.pending ?? 'pendiente de confirmación'}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <form
+      class="form"
+      novalidate
+      data-contact-form
+      data-endpoint={contact.formEndpoint ?? ''}
+      aria-describedby={isDemo ? 'form-demo' : undefined}
+      data-reveal
+    >
+      {isDemo && (
+        <p class="form__demo" id="form-demo"><Icon name="info" size={18} /> {contact.demoMessage}</p>
+      )}
+
+      <div class="field">
+        <label for="f-name">Nombre completo <span aria-hidden="true">*</span></label>
+        <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="f-name-err" />
+        <p class="field__error" id="f-name-err" data-error-for="name"></p>
+      </div>
+
+      <div class="field">
+        <label for="f-email">Correo electrónico <span aria-hidden="true">*</span></label>
+        <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required aria-describedby="f-email-err" />
+        <p class="field__error" id="f-email-err" data-error-for="email"></p>
+      </div>
+
+      <div class="field">
+        <label for="f-subject">Asunto <span aria-hidden="true">*</span></label>
+        <div class="select">
+          <select id="f-subject" name="subject" required aria-describedby="f-subject-err">
+            <option value="">Selecciona una opción</option>
+            {contact.subjects.map((s) => <option value={s}>{s}</option>)}
+          </select>
+        </div>
+        <p class="field__error" id="f-subject-err" data-error-for="subject"></p>
+      </div>
+
+      <div class="field">
+        <label for="f-message">Mensaje <span aria-hidden="true">*</span></label>
+        <textarea id="f-message" name="message" rows="5" required aria-describedby="f-message-err"></textarea>
+        <p class="field__error" id="f-message-err" data-error-for="message"></p>
+      </div>
+
+      <div class="field field--check">
+        <input id="f-privacy" name="privacy" type="checkbox" required aria-describedby="f-privacy-err" />
+        <label for="f-privacy">He leído y acepto la <a href="/privacidad">política de privacidad</a>.</label>
+        <p class="field__error" id="f-privacy-err" data-error-for="privacy"></p>
+      </div>
+
+      <button class="btn form__submit" type="submit">
+        Enviar consulta <Icon name="arrow-right" size={18} />
+      </button>
+
+      <p class="form__status" role="status" aria-live="polite" data-form-status></p>
+    </form>
+  </div>
+</section>
+
+<style>
+  .contact {
+    background:
+      radial-gradient(90% 80% at 0% 100%, #ff8a26 0%, transparent 60%),
+      var(--orange);
+  }
+  .contact__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 48px 24px;
+    align-items: start;
+  }
+  .contact__info { grid-column: 1 / span 6; }
+  .form { grid-column: 8 / span 5; }
+
+  .contact :global(.kicker) { color: var(--ink); }
+  .contact :global(.kicker::before) { background: var(--ink); }
+  .contact :global(.lead) { color: var(--ink); }
+  .contact__text { margin-top: 20px; max-width: 46ch; }
+
+  .channels { list-style: none; margin: 40px 0 0; padding: 0; border-top: 1px solid rgb(0 0 0 / 0.18); }
+  .channels li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 2px 16px;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid rgb(0 0 0 / 0.18);
+  }
+  .channels__icon {
+    grid-row: span 2;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--orange);
+  }
+  .channels__label { font-family: var(--font-display); font-size: 1.125rem; }
+  .channels__value { font-size: 0.9375rem; }
+  .channels__value--pending { opacity: 0.8; font-style: italic; }
+
+  .form {
+    display: grid;
+    gap: 18px;
+    padding: clamp(24px, 3vw, 36px);
+    border-radius: 24px;
+    background: var(--white);
+    box-shadow: 0 40px 80px -40px rgb(80 30 0 / 0.5);
+  }
+  .form__demo {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--orange-soft);
+    color: var(--orange-ink);
+    font-size: 0.9375rem;
+  }
+  .form__demo :global(svg) { flex-shrink: 0; margin-top: 3px; }
+
+  .field { display: grid; gap: 6px; }
+  .field label { font-size: 0.9375rem; }
+  .field input:not([type='checkbox']),
+  .field select,
+  .field textarea {
+    width: 100%;
+    min-height: 50px;
+    padding: 12px 14px;
+    border: 1.5px solid #c4c4c4;
+    border-radius: 12px;
+    background: var(--white);
+    font-size: 1rem;
+    transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+  }
+  .field textarea { resize: vertical; min-height: 130px; }
+  .field input:hover, .field select:hover, .field textarea:hover { border-color: #8a8a8a; }
+  .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible {
+    outline: none;
+    border-color: var(--ink);
+    box-shadow: 0 0 0 4px rgb(255 116 0 / 0.3);
+  }
+  .field [aria-invalid='true'] { border-color: #c0261b !important; }
+  .select { position: relative; }
+  .select::after {
+    content: '';
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  .select select { appearance: none; padding-right: 44px; }
+  .field__error { min-height: 0; font-size: 0.875rem; color: #c0261b; }
+  .field__error:empty { display: none; }
+
+  .field--check { grid-template-columns: auto 1fr; align-items: start; column-gap: 12px; }
+  .field--check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ink); }
+  .field--check .field__error { grid-column: 2; }
+  .field--check a { color: var(--orange-ink); }
+
+  .form__submit { justify-self: start; }
+  .form__submit[aria-busy='true'] { opacity: 0.7; pointer-events: none; }
+  .form__status { font-size: 0.9375rem; }
+  .form__status:empty { display: none; }
+  .form__status[data-tone='info'] { padding: 14px 16px; border-radius: var(--radius-sm); background: var(--surface); }
+  .form__status[data-tone='error'] { color: #c0261b; }
+
+  @media (max-width: 1023px) {
+    .contact__info, .form { grid-column: 1 / -1; }
+  }
+</style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-contact-form]')!;
+  const statusEl = form.querySelector<HTMLElement>('[data-form-status]')!;
+  const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  const endpoint = form.dataset.endpoint;
+
+  const messages: Record<string, (el: HTMLInputElement) => string> = {
+    name: (el) => (el.value.trim().length < 3 ? 'Escribe tu nombre completo.' : ''),
+    email: (el) =>
+      !el.value.trim() ? 'Escribe tu correo electrónico.' : el.validity.typeMismatch ? 'Revisa el formato del correo (ej.: nombre@dominio.com).' : '',
+    subject: (el) => (!el.value ? 'Selecciona un asunto.' : ''),
+    message: (el) => (el.value.trim().length < 10 ? 'Escribe un mensaje de al menos 10 caracteres.' : ''),
+    privacy: (el) => (!el.checked ? 'Debes aceptar la política de privacidad.' : ''),
+  };
+
+  function validate(field: HTMLInputElement) {
+    const msg = messages[field.name]?.(field) ?? '';
+    const out = form.querySelector<HTMLElement>(`[data-error-for="${field.name}"]`);
+    field.setAttribute('aria-invalid', String(!!msg));
+    if (out) out.textContent = msg;
+    return !msg;
+  }
+
+  const fields = Array.from(form.querySelectorAll<HTMLInputElement>('input, select, textarea'));
+  fields.forEach((f) =>
+    f.addEventListener(f.type === 'checkbox' || f.tagName === 'SELECT' ? 'change' : 'blur', () => {
+      if (f.getAttribute('aria-invalid') !== null || f.value) validate(f);
+    }),
+  );
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusEl.textContent = '';
+    const invalid = fields.filter((f) => !validate(f));
+    if (invalid.length) {
+      invalid[0].focus();
+      statusEl.dataset.tone = 'error';
+      statusEl.textContent = 'Revisa los campos marcados antes de continuar.';
+      return;
+    }
+
+    // Sin endpoint configurado: no se envía ningún dato.
+    if (!endpoint) {
+      statusEl.dataset.tone = 'info';
+      statusEl.textContent = 'Formulario de demostración. El envío estará disponible cuando se habilite un canal seguro. Tus datos no se han enviado ni almacenado.';
+      return;
+    }
+
+    submit.setAttribute('aria-busy', 'true');
+    statusEl.dataset.tone = 'info';
+    statusEl.textContent = 'Enviando…';
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: new FormData(form) });
+      if (!res.ok) throw new Error(String(res.status));
+      form.reset();
+      statusEl.textContent = 'Tu consulta se ha enviado. Gracias por escribir.';
+    } catch {
+      statusEl.dataset.tone = 'error';
+      statusEl.textContent = 'No se pudo enviar la consulta. Inténtalo de nuevo más tarde.';
+    } finally {
+      submit.removeAttribute('aria-busy');
+    }
+  });
+</script>

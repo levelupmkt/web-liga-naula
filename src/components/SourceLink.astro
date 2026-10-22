@@ -1,0 +1,11 @@
+---
+import type { Source } from '../content/site';
+import Icon from './Icon.astro';
+interface Props { source: Source }
+const { source } = Astro.props;
+---
+<a class="link" href={source.url} target="_blank" rel="noopener noreferrer">
+  {source.label}
+  <Icon name="external" size={14} />
+  <span class="sr-only">(se abre en una pestaña nueva)</span>
+</a>
