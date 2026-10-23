@@ -1,0 +1,84 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import PostCard from '../../components/PostCard.astro';
+import SocialLinks from '../../components/SocialLinks.astro';
+import Icon from '../../components/Icon.astro';
+import { publishedPosts, formatDate, type Post } from '../../content/site';
+
+export function getStaticPaths() {
+  return publishedPosts.map((post) => ({ params: { id: post.id }, props: { post } }));
+}
+
+interface Props { post: Post }
+const { post } = Astro.props;
+const others = publishedPosts.filter((p) => p.id !== post.id).slice(0, 3);
+---
+<BaseLayout title={`${post.title} · Ligia Naula`} description={post.summary}>
+  <PageHero kicker={post.category} title={post.title} crumbs={[{ label: 'Actualidad', href: '/actualidad' }]}>
+    <p class="meta">
+      <span><Icon name="calendar" size={16} /> <time datetime={post.date}>{formatDate(post.date)}</time></span>
+      {post.location && <span><Icon name="pin" size={16} /> {post.location}</span>}
+    </p>
+  </PageHero>
+
+  <article class="section note">
+    <div class="container note__inner">
+      {post.image && (
+        <figure class="note__figure">
+          <Image src={post.image.src} alt={post.image.alt} widths={[600, 1000, 1400]} sizes="(min-width: 900px) 820px, 100vw" class="note__img" loading="eager" />
+        </figure>
+      )}
+      <div class="note__body">
+        <p class="note__lead">{post.summary}</p>
+        {(post.body ?? []).map((p) => <p>{p}</p>)}
+        {post.url && (
+          <p>
+            <a class="link" href={post.url} target="_blank" rel="noopener noreferrer">
+              Ver publicación original <Icon name="external" size={14} />
+              <span class="sr-only">(se abre en una pestaña nueva)</span>
+            </a>
+          </p>
+        )}
+      </div>
+      <footer class="note__foot">
+        <a class="link" href="/actualidad"><Icon name="arrow-left" size={16} /> Volver a Actualidad</a>
+        <div class="note__share">
+          <span>Síguela en redes</span>
+          <SocialLinks />
+        </div>
+      </footer>
+    </div>
+  </article>
+
+  {others.length > 0 && (
+    <section class="others" aria-labelledby="others-title">
+      <div class="container">
+        <h2 id="others-title" class="others__title">Más actividades</h2>
+        <ul class="others__grid">
+          {others.map((p, i) => <li><PostCard post={p} delay={i * 80} /></li>)}
+        </ul>
+      </div>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .meta span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgb(255 255 255 / 0.9); font-size: 0.875rem; }
+
+  .note__inner { max-width: 860px; }
+  .note__figure { margin: 0 0 40px; }
+  .note__img { width: 100%; max-height: 640px; object-fit: cover; object-position: 50% 30%; border-radius: var(--radius); }
+  .note__body { display: grid; gap: 20px; font-size: 1.125rem; line-height: 1.7; }
+  .note__lead { font-family: var(--font-display); font-size: clamp(1.375rem, 2.4vw, 1.75rem); line-height: 1.25; }
+  .note__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .note__share { display: flex; align-items: center; gap: 14px; font-size: 0.9375rem; color: var(--ink-soft); }
+
+  .others { background: var(--surface); padding-block: clamp(56px, 8vw, 96px); }
+  .others__title { font-size: clamp(1.75rem, 3vw, 2.5rem); text-transform: uppercase; margin-bottom: 28px; }
+  .others__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; list-style: none; margin: 0; padding: 0; }
+  @media (max-width: 1023px) { .others__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 767px) { .others__grid { grid-template-columns: 1fr; } }
+</style>

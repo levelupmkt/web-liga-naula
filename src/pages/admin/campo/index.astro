@@ -1,0 +1,235 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { sectores, parroquias, fieldReports, FIELD_TYPE_LABEL, FIELD_TYPE_COLOR, currentUser } from '../../../content/admin-demo';
+
+const rows = fieldReports.map((f) => ({ ...f, barrio: sectores[f.sector].barrio, parroquia: sectores[f.sector].parroquia }));
+const sectorOpts = sectores.map((s, i) => ({ i, p: s.parroquiaId, barrio: s.barrio }));
+---
+<AdminLayout title="Reportes de campo">
+  <div class="page-head">
+    <div>
+      <h1>Reportes de campo</h1>
+      <p>Lo que el equipo ve y escucha en cada barrio, con ubicación del brigadista.</p>
+    </div>
+    <div class="page-head__actions">
+      <a class="abtn" href="/admin/campo/importar"><Icon name="upload" size={16} /> Importar CSV / Excel</a>
+    </div>
+  </div>
+
+  <div class="layout">
+    <section class="panel form-panel" aria-labelledby="new-title">
+      <h2 class="panel__title" id="new-title">Nuevo reporte</h2>
+      <p class="small muted">Formulario pensado para el celular del brigadista.</p>
+      <form class="rform" novalidate data-form>
+        <div class="two">
+          <div class="afield">
+            <label for="r-p">Parroquia</label>
+            <select class="aselect" id="r-p" required data-p>
+              <option value="">Elige…</option>
+              {parroquias.map((p) => <option value={p.id}>{p.nombre}</option>)}
+            </select>
+          </div>
+          <div class="afield">
+            <label for="r-b">Barrio</label>
+            <select class="aselect" id="r-b" required disabled data-b><option value="">Elige…</option></select>
+          </div>
+        </div>
+
+        <fieldset class="afield seg-field">
+          <legend class="afield__label">Tipo</legend>
+          <div class="seg">
+            {Object.entries(FIELD_TYPE_LABEL).map(([k, v], i) => (
+              <label style={`--c:${FIELD_TYPE_COLOR[k as keyof typeof FIELD_TYPE_COLOR]}`}>
+                <input type="radio" name="tipo" value={k} checked={i === 0} /><span>{v}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset class="afield seg-field">
+          <legend class="afield__label">Receptividad</legend>
+          <div class="stars" role="radiogroup">
+            {[5, 4, 3, 2, 1].map((n) => (
+              <label><input type="radio" name="rec" value={n} checked={n === 4} /><span aria-hidden="true">★</span><span class="sr-only">{n} de 5</span></label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div class="afield">
+          <label for="r-note">Nota <span class="small" data-count>0/500</span></label>
+          <textarea class="atextarea" id="r-note" maxlength="500" rows="3" placeholder="¿Qué pasó? ¿Qué pidió la gente?" data-note></textarea>
+        </div>
+
+        <div class="two">
+          <label class="file">
+            <input type="file" accept="image/*" capture="environment" data-photo />
+            <Icon name="camera" size={18} /> <span data-photo-label>Foto (opcional)</span>
+          </label>
+          <button class="abtn gps" type="button" data-gps><Icon name="crosshair" size={18} /> <span data-gps-label>Capturar ubicación</span></button>
+        </div>
+        <p class="small muted">Fecha y hora se registran automáticamente. Las fotos se comprimen a 1600 px.</p>
+        <p class="form-error small" role="alert" data-error></p>
+        <button class="abtn abtn--orange submit" type="submit">Guardar reporte</button>
+      </form>
+    </section>
+
+    <section class="panel list-panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Reportes</h2>
+        <div class="tabs" role="group" aria-label="Mostrar">
+          <button type="button" aria-pressed="true" data-scope="all" data-roles="admin,analista,lector">Todos</button>
+          <button type="button" aria-pressed="false" data-scope="mine">Míos</button>
+        </div>
+      </div>
+      <p class="small muted scope-note" data-roles="campo">Con el rol Campo solo ves tus propios reportes.</p>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Fecha</th><th>Sector</th><th>Tipo</th><th>Nota</th><th class="num">Rec.</th><th>GPS</th></tr></thead>
+          <tbody data-tbody>
+            {rows.map((f) => (
+              <tr data-user={f.usuario}>
+                <td class="small"><span class="nowrap">{f.fecha.slice(5).replace('-', '/')}</span><br /><span class="muted nowrap">{f.usuario}</span></td>
+                <td>{f.barrio}<br /><span class="small muted">{f.parroquia}</span></td>
+                <td><span class="type-dot" style={`--c:${FIELD_TYPE_COLOR[f.tipo]}`}>{FIELD_TYPE_LABEL[f.tipo]}</span></td>
+                <td class="note-cell small">{f.nota}{f.foto && <span class="muted"> · 📷</span>}</td>
+                <td class="num">{f.receptividad}/5</td>
+                <td class="small">{f.lat === null ? <span class="muted">Sin GPS</span> : <span title={`${f.lat.toFixed(4)}, ${f.lng!.toFixed(4)}`}>✓</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div class="more"><button class="abtn abtn--sm" type="button" data-more>Mostrar más</button></div>
+    </section>
+  </div>
+
+  <script type="application/json" id="sector-data" set:html={JSON.stringify({ sectores: sectorOpts, me: currentUser.nombre, labels: FIELD_TYPE_LABEL, colors: FIELD_TYPE_COLOR, pnames: Object.fromEntries(parroquias.map((p) => [p.id, p.nombre])) })}></script>
+</AdminLayout>
+
+<script>
+  const D = JSON.parse(document.getElementById('sector-data')!.textContent!);
+  const $ = <E extends Element>(s: string) => document.querySelector<E>(s)!;
+  const toast = (m: string) => (window as any).demoToast(m);
+  const pSel = $<HTMLSelectElement>('[data-p]');
+  const bSel = $<HTMLSelectElement>('[data-b]');
+  const note = $<HTMLTextAreaElement>('[data-note]');
+  let coords: [number, number] | null = null;
+  let scope = document.documentElement.dataset.role === 'campo' ? 'mine' : 'all';
+  // En la demo, con rol Campo el usuario actual es un brigadista
+  const me = () => (document.documentElement.dataset.role === 'campo' ? 'Luis Pacheco' : D.me);
+
+  pSel.addEventListener('change', () => {
+    bSel.innerHTML = '<option value="">Elige…</option>' + D.sectores.filter((s: any) => s.p === pSel.value).map((s: any) => `<option value="${s.i}">${s.barrio}</option>`).join('');
+    bSel.disabled = !pSel.value;
+  });
+  note.addEventListener('input', () => ($('[data-count]').textContent = `${note.value.length}/500`));
+  $<HTMLInputElement>('[data-photo]').addEventListener('change', (e) => {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    $('[data-photo-label]').textContent = f ? `📷 ${f.name.slice(0, 18)}` : 'Foto (opcional)';
+  });
+
+  $('[data-gps]').addEventListener('click', () => {
+    const label = $('[data-gps-label]');
+    label.textContent = 'Buscando…';
+    const fallback = () => { coords = [-3.4505 + (Math.random() - 0.5) * 0.01, -79.9585 + (Math.random() - 0.5) * 0.01]; label.textContent = 'Ubicación simulada ✓'; };
+    if (!navigator.geolocation) return fallback();
+    navigator.geolocation.getCurrentPosition(
+      (p) => { coords = [p.coords.latitude, p.coords.longitude]; label.textContent = 'Ubicación capturada ✓'; },
+      () => { coords = null; label.textContent = 'Sin permiso · se guarda sin GPS'; },
+      { timeout: 6000 },
+    );
+    setTimeout(() => label.textContent === 'Buscando…' && fallback(), 6500);
+  });
+
+  $<HTMLFormElement>('[data-form]').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err = $('[data-error]');
+    if (!pSel.value || !bSel.value) { err.textContent = 'Elige parroquia y barrio.'; (pSel.value ? bSel : pSel).focus(); return; }
+    err.textContent = '';
+    const tipo = $<HTMLInputElement>('input[name="tipo"]:checked').value;
+    const rec = $<HTMLInputElement>('input[name="rec"]:checked').value;
+    const s = D.sectores.find((x: any) => String(x.i) === bSel.value);
+    const now = new Date();
+    const tr = document.createElement('tr');
+    tr.dataset.user = me();
+    tr.className = 'is-new';
+    tr.innerHTML = `<td class="small"><span class="nowrap">${now.toISOString().slice(5, 10).replace('-', '/')} ${now.toTimeString().slice(0, 5)}</span><br><span class="muted nowrap">${me()}</span></td>
+      <td>${s.barrio}<br><span class="small muted">${D.pnames[s.p]}</span></td>
+      <td><span class="type-dot" style="--c:${D.colors[tipo]}">${D.labels[tipo]}</span></td>
+      <td class="note-cell small"></td><td class="num">${rec}/5</td>
+      <td class="small">${coords ? '✓' : '<span class="muted">Sin GPS</span>'}</td>`;
+    tr.querySelector('.note-cell')!.textContent = note.value || '—';
+    $('[data-tbody]').prepend(tr);
+    (e.target as HTMLFormElement).reset();
+    bSel.disabled = true;
+    coords = null;
+    $('[data-gps-label]').textContent = 'Capturar ubicación';
+    $('[data-photo-label]').textContent = 'Foto (opcional)';
+    $('[data-count]').textContent = '0/500';
+    applyScope();
+    toast('Reporte guardado (demo: no se almacena)');
+  });
+
+  const scopeBtns = document.querySelectorAll<HTMLButtonElement>('[data-scope]');
+  const moreBtn = $<HTMLButtonElement>('[data-more]');
+  let limit = 12;
+  function applyScope() {
+    if (document.documentElement.dataset.role === 'campo') scope = 'mine';
+    scopeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.scope === scope)));
+    let shown = 0;
+    let matching = 0;
+    document.querySelectorAll<HTMLElement>('[data-tbody] tr').forEach((tr) => {
+      const match = scope === 'all' || tr.dataset.user === me();
+      if (match) matching++;
+      tr.hidden = !match || shown >= limit;
+      if (!tr.hidden) shown++;
+    });
+    moreBtn.hidden = matching <= limit;
+    moreBtn.textContent = `Mostrar más (${matching - limit} restantes)`;
+  }
+  moreBtn.addEventListener('click', () => { limit += 12; applyScope(); });
+  scopeBtns.forEach((b) => b.addEventListener('click', () => { scope = b.dataset.scope!; limit = 12; applyScope(); }));
+  applyScope();
+  $('[data-role-select]').addEventListener('change', applyScope);
+</script>
+
+<style>
+  .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .form-panel { position: sticky; top: 118px; }
+  .rform { display: grid; gap: 16px; margin-top: 16px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg-field { margin: 0; padding: 0; border: 0; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label { cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; }
+  .seg span { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.875rem; }
+  .seg span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  .seg input:checked + span { background: var(--ink); color: var(--white); border-color: var(--ink); }
+  .seg input:focus-visible + span { outline: 3px solid var(--orange); outline-offset: 2px; }
+  .stars { display: flex; gap: 4px; flex-direction: row-reverse; justify-content: flex-end; }
+  .stars label { cursor: pointer; font-size: 2rem; line-height: 1; color: #d4d4d4; }
+  .stars input { position: absolute; opacity: 0; }
+  .stars label:has(input:checked), .stars label:has(input:checked) ~ label, .stars label:hover, .stars label:hover ~ label { color: var(--orange); }
+  .stars label:has(input:focus-visible) { outline: 2px solid var(--ink); border-radius: 4px; }
+  .file { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px dashed #b5b5b5; font-size: 0.875rem; cursor: pointer; overflow: hidden; white-space: nowrap; }
+  .file input { position: absolute; opacity: 0; width: 1px; }
+  .file:focus-within { outline: 3px solid var(--ink); }
+  .gps { font-size: 0.875rem; }
+  .submit { min-height: 48px; }
+  .form-error { color: #b91c1c; min-height: 1em; }
+
+  .scope-note { margin: -8px 0 10px; }
+  .note-cell { min-width: 200px; max-width: 320px; }
+  .nowrap { white-space: nowrap; }
+  .more { display: flex; justify-content: center; padding-top: 14px; }
+  .type-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; white-space: nowrap; }
+  .type-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  :global(tr.is-new) { animation: flash 1.6s var(--ease); }
+  @keyframes flash { from { background: var(--orange-soft); } }
+
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .form-panel { position: static; }
+  }
+</style>

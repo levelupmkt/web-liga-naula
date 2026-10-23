@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import FeaturedPost from '../../components/FeaturedPost.astro';
+import PostCard from '../../components/PostCard.astro';
+import SocialLinks from '../../components/SocialLinks.astro';
+import NextPages from '../../components/NextPages.astro';
+import { news, publishedPosts, formatDate } from '../../content/site';
+
+const featured = publishedPosts.find((p) => p.featured) ?? publishedPosts[0];
+const rest = publishedPosts.filter((p) => p !== featured);
+const digital = news.digitalMetrics.filter((m) => m.verified);
+---
+<BaseLayout title="Actualidad · Ligia Naula" description={news.lead}>
+  <PageHero kicker="Actualidad" title={news.title} lead={news.lead} />
+
+  <section class="section list" aria-label="Publicaciones">
+    <div class="container">
+      {featured ? (
+        <>
+          <FeaturedPost post={featured} headingLevel="h2" />
+          {rest.length > 0 && (
+            <ul class="grid">
+              {rest.map((p, i) => <li><PostCard post={p} delay={(i % 3) * 80} headingLevel="h2" /></li>)}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p class="empty">{news.empty}</p>
+      )}
+    </div>
+  </section>
+
+  <section class="social-band" aria-labelledby="social-title">
+    <div class="container social-band__grid">
+      <div data-reveal>
+        <h2 id="social-title" class="social-band__title">{news.socialTitle}</h2>
+        <p class="social-band__text">{news.socialText}</p>
+      </div>
+      <div data-reveal><SocialLinks variant="list" /></div>
+    </div>
+    {digital.length > 0 && (
+      <div class="container">
+        <ul class="digital">
+          {digital.map((m) => (
+            <li>
+              <strong>{m.value.toLocaleString('es-EC')}</strong>
+              <span>{m.label}{m.platform && ` · ${m.platform}`}</span>
+              <small>Corte: {formatDate(m.asOf)} · Fuente: {m.source}</small>
+            </li>
+          ))}
+        </ul>
+        <p class="digital__note">{news.digitalMetricsNote}</p>
+      </div>
+    )}
+  </section>
+
+  <NextPages current="/actualidad" />
+</BaseLayout>
+
+<style>
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; list-style: none; margin: 20px 0 0; padding: 0; }
+  .empty { padding: 48px; border: 2px dashed var(--gray); border-radius: var(--radius); text-align: center; color: var(--ink-soft); }
+
+  .social-band { background: var(--orange); padding-block: clamp(56px, 8vw, 96px); }
+  .social-band__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px 64px; align-items: center; }
+  .social-band__title { font-size: clamp(2rem, 4.4vw, 3.5rem); text-transform: uppercase; }
+  .social-band__text { margin-top: 14px; font-size: 1.125rem; max-width: 40ch; }
+  .digital { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; list-style: none; margin: 40px 0 0; padding: 0; }
+  .digital li { display: grid; padding: 20px; border-radius: var(--radius); background: var(--white); }
+  .digital strong { font-family: var(--font-display); font-weight: 500; font-size: 2rem; }
+  .digital__note { margin-top: 12px; font-size: 0.875rem; }
+
+  @media (max-width: 1023px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 767px) {
+    .grid { grid-template-columns: 1fr; }
+    .social-band__grid { grid-template-columns: 1fr; }
+  }
+</style>

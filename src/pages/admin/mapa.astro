@@ -1,0 +1,319 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import {
+  surveys, surveyResults, sectores, parroquias, parroquiaGeoJSON, optionsOf, fieldReports,
+  ANON_THRESHOLD, FIELD_TYPE_LABEL, FIELD_TYPE_COLOR,
+} from '../../content/admin-demo';
+
+const withResults = surveys.filter((s) => s.estado !== 'borrador');
+const pIndex = new Map(parroquias.map((p, i) => [p.id, i]));
+const secToP = sectores.map((s) => pIndex.get(s.parroquiaId)!);
+
+// Agregados por parroquia para cada encuesta: participaciones y conteos por opción
+const surveyData = withResults.map((s) => {
+  const r = surveyResults(s);
+  const part = new Array(parroquias.length).fill(0);
+  r.participacion.forEach(([si, , , n]) => (part[secToP[si]] += n));
+  const preguntas = s.preguntas.filter((q) => q.tipo !== 'texto').map((q) => {
+    const opts = optionsOf(q);
+    const counts = parroquias.map(() => new Array(opts.length).fill(0));
+    r.byQuestion[q.id].forEach(([si, , oi, n]) => (counts[secToP[si]][oi] += n));
+    return { id: q.id, tipo: q.tipo, enunciado: q.enunciado, opciones: opts, counts };
+  });
+  return { id: s.id, titulo: s.titulo, part, preguntas };
+});
+
+const reports = fieldReports.map((f) => ({
+  lat: f.lat, lng: f.lng, tipo: f.tipo, rec: f.receptividad, nota: f.nota, fecha: f.fecha, usuario: f.usuario,
+  p: secToP[f.sector], barrio: sectores[f.sector].barrio,
+}));
+
+const payload = {
+  threshold: ANON_THRESHOLD,
+  geo: parroquiaGeoJSON(),
+  parroquias: parroquias.map((p) => p.nombre),
+  surveys: surveyData,
+  reports,
+  typeLabel: FIELD_TYPE_LABEL,
+  typeColor: FIELD_TYPE_COLOR,
+};
+---
+<AdminLayout title="Mapa de calor" roles={['admin', 'analista', 'lector']}>
+  <div class="page-head">
+    <div>
+      <h1>Mapa de calor</h1>
+      <p>Resultados por zona y reportes del equipo de campo. Nunca se muestran ubicaciones de votantes.</p>
+    </div>
+  </div>
+
+  <div class="map-layout">
+    <aside class="panel controls" aria-label="Controles del mapa">
+      <fieldset class="ctl">
+        <legend>Colorear zonas por</legend>
+        <label class="radio"><input type="radio" name="layer" value="encuestas" checked /> Resultados de encuestas</label>
+        <label class="radio"><input type="radio" name="layer" value="receptividad" /> Receptividad de campo</label>
+        <label class="radio"><input type="radio" name="layer" value="none" /> Sin color</label>
+      </fieldset>
+
+      <div class="ctl" data-survey-ctl>
+        <div class="afield">
+          <label for="m-survey">Encuesta</label>
+          <select class="aselect" id="m-survey" data-survey>
+            {surveyData.map((s) => <option value={s.id}>{s.titulo}</option>)}
+          </select>
+        </div>
+        <div class="afield">
+          <label for="m-metric">Métrica</label>
+          <select class="aselect" id="m-metric" data-metric>
+            <option value="count">Número de respuestas</option>
+            <option value="pct">% que eligió una opción</option>
+            <option value="avg">Promedio de escala</option>
+          </select>
+        </div>
+        <div class="afield" data-q-wrap hidden>
+          <label for="m-q">Pregunta</label>
+          <select class="aselect" id="m-q" data-q></select>
+        </div>
+        <div class="afield" data-o-wrap hidden>
+          <label for="m-o">Opción</label>
+          <select class="aselect" id="m-o" data-o></select>
+        </div>
+        <p class="small muted" data-metric-note></p>
+      </div>
+
+      <fieldset class="ctl">
+        <legend>Reportes de campo</legend>
+        <label class="switch small"><input type="checkbox" data-points checked /><span class="switch__track"></span><span>Mostrar puntos</span></label>
+        <div class="chips">
+          {Object.entries(FIELD_TYPE_LABEL).map(([k, v]) => (
+            <label class="chip" style={`--c:${FIELD_TYPE_COLOR[k as keyof typeof FIELD_TYPE_COLOR]}`}>
+              <input type="checkbox" value={k} checked data-type /> {v}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </aside>
+
+    <section class="panel map-panel">
+      <div class="map" id="map" role="region" aria-label="Mapa de Santa Rosa por parroquias"></div>
+      <div class="legend" data-legend></div>
+      <p class="map-note small muted"><Icon name="info" size={14} /> Zonas ilustrativas: se reemplazarán por los límites oficiales de parroquias y barrios.</p>
+    </section>
+
+    <section class="panel ranking">
+      <div class="panel__head">
+        <h2 class="panel__title">Ranking de zonas</h2>
+        <span class="small muted" data-rank-sub></span>
+      </div>
+      <ol class="rank" data-rank></ol>
+    </section>
+  </div>
+
+  <script type="application/json" id="map-data" set:html={JSON.stringify(payload)}></script>
+</AdminLayout>
+
+<script>
+  import L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
+
+  type SurveyQ = { id: string; tipo: string; enunciado: string; opciones: string[]; counts: number[][] };
+  type D = {
+    threshold: number; geo: any; parroquias: string[];
+    surveys: Array<{ id: string; titulo: string; part: number[]; preguntas: SurveyQ[] }>;
+    reports: Array<{ lat: number | null; lng: number | null; tipo: string; rec: number; nota: string; fecha: string; usuario: string; p: number; barrio: string }>;
+    typeLabel: Record<string, string>; typeColor: Record<string, string>;
+  };
+  const data: D = JSON.parse(document.getElementById('map-data')!.textContent!);
+  const T = data.threshold;
+  const $ = <E extends Element>(s: string) => document.querySelector<E>(s)!;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  const map = L.map('map', { scrollWheelZoom: false, zoomControl: true }).setView([-3.47, -79.94], 11);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(map);
+
+  const SCALE = ['#fff1e6', '#ffd2ad', '#ffab6b', '#ff7f1f', '#c75400'];
+  const ANON_COLOR = '#d4d4d8';
+
+  let values: Array<number | null> = []; // null = protegido (< umbral)
+  let fmtVal = (v: number) => String(v);
+  let breaks: number[] = [];
+
+  // Cortes por cuantiles: cada color agrupa un número similar de zonas
+  function computeBreaks() {
+    const vs = values.filter((v): v is number => v !== null).sort((x, y) => x - y);
+    breaks = SCALE.map((_, k) => (vs.length ? vs[Math.floor((k / SCALE.length) * vs.length)] : 0));
+  }
+  function colorFor(v: number | null) {
+    if (v === null) return ANON_COLOR;
+    let k = 0;
+    breaks.forEach((b, i) => v >= b && (k = i));
+    return SCALE[k];
+  }
+
+  const zones = L.geoJSON(data.geo, {
+    style: () => ({ weight: 1.5, color: '#161616', opacity: 0.6, fillOpacity: 0.75, fillColor: SCALE[0] }),
+    onEachFeature: (feature, layer) => {
+      const i = data.geo.features.indexOf(feature);
+      layer.on('mouseover', () => (layer as L.Path).setStyle({ weight: 3 }));
+      layer.on('mouseout', () => (layer as L.Path).setStyle({ weight: 1.5 }));
+      layer.bindTooltip(() => tooltip(i), { sticky: true, className: 'zone-tip' });
+    },
+  }).addTo(map);
+  map.fitBounds(zones.getBounds(), { padding: [20, 20] });
+
+  function tooltip(i: number) {
+    const v = values[i];
+    const layerMode = currentLayer();
+    const val = layerMode === 'none' ? '' : v === null ? `<span class="anon">menos de ${T}</span>` : `<strong>${fmtVal(v!)}</strong>`;
+    return `<b>${esc(data.parroquias[i])}</b>${val ? `<br>${val}` : ''}`;
+  }
+
+  // ---- Puntos de campo ----
+  const points = L.layerGroup().addTo(map);
+  function drawPoints() {
+    points.clearLayers();
+    if (!$<HTMLInputElement>('[data-points]').checked) return;
+    const types = new Set([...document.querySelectorAll<HTMLInputElement>('[data-type]:checked')].map((c) => c.value));
+    data.reports.forEach((r) => {
+      if (r.lat === null || r.lng === null || !types.has(r.tipo)) return;
+      L.circleMarker([r.lat, r.lng], { radius: 6, color: '#fff', weight: 1.5, fillColor: data.typeColor[r.tipo], fillOpacity: 0.95 })
+        .bindPopup(`<b>${esc(data.typeLabel[r.tipo])}</b> · ${'★'.repeat(r.rec)}<br>${esc(r.nota)}<br><small>${esc(r.barrio)} · ${esc(r.usuario)} · ${r.fecha}</small>`)
+        .addTo(points);
+    });
+  }
+
+  // ---- Métricas ----
+  const currentLayer = () => ($<HTMLInputElement>('input[name="layer"]:checked').value);
+  const survey = () => data.surveys.find((s) => s.id === $<HTMLSelectElement>('[data-survey]').value)!;
+
+  function fillQuestions() {
+    const metric = $<HTMLSelectElement>('[data-metric]').value;
+    const qs = survey().preguntas.filter((q) => (metric === 'avg' ? q.tipo === 'escala' : metric === 'pct' ? q.tipo !== 'escala' : true));
+    const qSel = $<HTMLSelectElement>('[data-q]');
+    qSel.innerHTML = qs.map((q) => `<option value="${q.id}">${esc(q.enunciado)}</option>`).join('');
+    $<HTMLElement>('[data-q-wrap]').hidden = metric === 'count' || !qs.length;
+    fillOptions();
+  }
+  function fillOptions() {
+    const metric = $<HTMLSelectElement>('[data-metric]').value;
+    const q = survey().preguntas.find((x) => x.id === $<HTMLSelectElement>('[data-q]').value);
+    $<HTMLSelectElement>('[data-o]').innerHTML = (q?.opciones ?? []).map((o, k) => `<option value="${k}">${esc(o)}</option>`).join('');
+    $<HTMLElement>('[data-o-wrap]').hidden = metric !== 'pct' || !q;
+  }
+
+  function computeValues() {
+    const mode = currentLayer();
+    $<HTMLElement>('[data-survey-ctl]').hidden = mode !== 'encuestas';
+    const note = $<HTMLElement>('[data-metric-note]');
+    note.textContent = '';
+    if (mode === 'none') { values = data.parroquias.map(() => 0); return 'Sin métrica'; }
+
+    if (mode === 'receptividad') {
+      values = data.parroquias.map((_, i) => {
+        const rs = data.reports.filter((r) => r.p === i);
+        return rs.length ? rs.reduce((a, r) => a + r.rec, 0) / rs.length : null;
+      });
+      fmtVal = (v) => `${v.toFixed(1).replace('.', ',')} / 5 receptividad`;
+      return 'Receptividad promedio de los reportes de campo';
+    }
+
+    const s = survey();
+    const metric = $<HTMLSelectElement>('[data-metric]').value;
+    if (metric === 'count') {
+      values = s.part.map((n) => (n < T ? null : n));
+      fmtVal = (v) => `${v.toLocaleString('es-EC')} respuestas`;
+      return 'Número de respuestas por zona';
+    }
+    const q = s.preguntas.find((x) => x.id === $<HTMLSelectElement>('[data-q]').value);
+    if (!q) { note.textContent = 'Esta encuesta no tiene preguntas de este tipo.'; values = data.parroquias.map(() => null); return '—'; }
+    if (metric === 'pct') {
+      const k = Number($<HTMLSelectElement>('[data-o]').value || 0);
+      values = q.counts.map((c, i) => {
+        const denom = q.tipo === 'multiple' ? s.part[i] : c.reduce((a, b) => a + b, 0);
+        return s.part[i] < T || !denom ? null : (c[k] / denom) * 100;
+      });
+      fmtVal = (v) => `${v.toFixed(1).replace('.', ',')}% eligió «${q.opciones[k]}»`;
+      return `% que eligió «${q.opciones[k]}»`;
+    }
+    values = q.counts.map((c, i) => {
+      const sum = c.reduce((a, b) => a + b, 0);
+      return s.part[i] < T || !sum ? null : c.reduce((a, n, k) => a + n * (k + 1), 0) / sum;
+    });
+    fmtVal = (v) => `${v.toFixed(2).replace('.', ',')} promedio (1–5)`;
+    return 'Promedio de escala (1 a 5)';
+  }
+
+  function render() {
+    const label = computeValues();
+    computeBreaks();
+    const mode = currentLayer();
+    zones.eachLayer((layer: any) => {
+      const i = data.geo.features.indexOf(layer.feature);
+      layer.setStyle({ fillColor: mode === 'none' ? '#ffffff' : colorFor(values[i]), fillOpacity: mode === 'none' ? 0.2 : 0.75 });
+    });
+    // Leyenda
+    const isCount = mode === 'encuestas' && $<HTMLSelectElement>('[data-metric]').value === 'count';
+    const steps = SCALE.map((c, k) => {
+      const lo = breaks[k];
+      return `<span class="legend__step"><i style="background:${c}"></i>${isCount ? Math.round(lo) : lo.toFixed(1).replace('.', ',')}+</span>`;
+    }).join('');
+    $<HTMLElement>('[data-legend]').innerHTML = mode === 'none' ? '' :
+      `<strong>${esc(label)}</strong><div class="legend__scale">${steps}<span class="legend__step"><i style="background:${ANON_COLOR}"></i>menos de ${T}</span></div>`;
+    // Ranking
+    const ranked = data.parroquias.map((n, i) => ({ n, v: values[i] })).sort((x, y) => (y.v ?? -1) - (x.v ?? -1));
+    $<HTMLElement>('[data-rank-sub]').textContent = mode === 'none' ? '' : label;
+    $<HTMLElement>('[data-rank]').innerHTML = mode === 'none' ? '<li class="muted">Elige una capa para ver el ranking.</li>' :
+      ranked.map((r) => `<li><span>${esc(r.n)}</span><span>${r.v === null ? `<span class="anon">menos de ${T}</span>` : fmtVal(r.v)}</span></li>`).join('');
+  }
+
+  document.querySelectorAll('input[name="layer"]').forEach((r) => r.addEventListener('change', render));
+  $('[data-survey]').addEventListener('change', () => { fillQuestions(); render(); });
+  $('[data-metric]').addEventListener('change', () => { fillQuestions(); render(); });
+  $('[data-q]').addEventListener('change', () => { fillOptions(); render(); });
+  $('[data-o]').addEventListener('change', render);
+  $('[data-points]').addEventListener('change', drawPoints);
+  document.querySelectorAll('[data-type]').forEach((c) => c.addEventListener('change', drawPoints));
+
+  fillQuestions();
+  render();
+  drawPoints();
+</script>
+
+<style>
+  .map-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: 'controls map' 'controls rank'; gap: 16px; align-items: start; }
+  .controls { grid-area: controls; display: grid; gap: 20px; position: sticky; top: 118px; }
+  .map-panel { grid-area: map; padding: 0; overflow: hidden; }
+  .ranking { grid-area: rank; }
+  .ctl { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
+  .ctl legend { margin-bottom: 8px; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .radio { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; cursor: pointer; }
+  .radio input { accent-color: var(--ink); width: 18px; height: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.8125rem; cursor: pointer; }
+  .chip input { accent-color: var(--c); }
+  .chip::before { content: ''; order: 2; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+
+  .map { height: min(70vh, 620px); min-height: 420px; background: #eef2f3; z-index: 0; }
+  .map :global(.leaflet-tile-pane) { filter: grayscale(1) brightness(1.06) contrast(0.92); }
+  .legend { padding: 14px 18px 4px; font-size: 0.8125rem; }
+  :global(.legend__scale) { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 8px; }
+  :global(.legend__step) { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  :global(.legend__step i) { width: 18px; height: 12px; border-radius: 3px; border: 1px solid rgb(0 0 0 / 0.15); }
+  .map-note { display: flex; align-items: center; gap: 6px; padding: 6px 18px 14px; }
+
+  .rank { display: grid; list-style: none; margin: 0; padding: 0; counter-reset: r; }
+  :global(.rank li) { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 0.9375rem; counter-increment: r; }
+  :global(.rank li::before) { content: counter(r); width: 22px; color: var(--ink-soft); }
+  :global(.rank li > span:first-child) { flex: 1; }
+  :global(.rank li > span:last-child) { color: var(--ink-soft); text-align: right; }
+  :global(.zone-tip) { font-family: var(--font-body); font-size: 0.8125rem; }
+
+  @media (max-width: 1023px) {
+    .map-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'map' 'controls' 'rank'; }
+    .controls { position: static; }
+  }
+</style>

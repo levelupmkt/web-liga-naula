@@ -1,0 +1,14 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import Timeline from '../../components/Timeline.astro';
+import Records from '../../components/Records.astro';
+import NextPages from '../../components/NextPages.astro';
+import { photos, trajectory } from '../../content/site';
+---
+<BaseLayout title="Trayectoria y gestión · Ligia Naula" description={trajectory.lead}>
+  <PageHero kicker="Trayectoria" title={trajectory.title} lead={trajectory.lead} photo={photos.group} />
+  <Timeline />
+  <Records />
+  <NextPages current="/trayectoria" />
+</BaseLayout>

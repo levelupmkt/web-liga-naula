@@ -1,0 +1,53 @@
+---
+import { Image } from 'astro:assets';
+import { formatDate, type Post } from '../content/site';
+import Icon from './Icon.astro';
+
+interface Props { post: Post; delay?: number; headingLevel?: 'h3' | 'h4' }
+const { post, delay = 0, headingLevel: H = 'h3' } = Astro.props;
+---
+<article class="post" data-reveal style={`--delay:${delay}ms`}>
+  {post.image && (
+    <div class="post__media">
+      <Image src={post.image.src} alt={post.image.alt} widths={[400, 700]} sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" class="post__img" />
+    </div>
+  )}
+  <div class="post__body">
+    <p class="post__meta"><span class="tag">{post.category}</span> <time datetime={post.date}>{formatDate(post.date)}</time></p>
+    <H class="post__title">
+      <a href={`/actualidad/${post.id}`}>{post.title}</a>
+    </H>
+    <p class="post__summary">{post.summary}</p>
+    <span class="post__more" aria-hidden="true">Leer la nota <Icon name="arrow-right" size={16} /></span>
+  </div>
+</article>
+
+<style>
+  .post {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--white);
+    transition: transform 250ms var(--ease), box-shadow 250ms var(--ease);
+  }
+  .post:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .post__media { overflow: hidden; }
+  .post__img { width: 100%; aspect-ratio: 4 / 3.4; object-fit: cover; object-position: 50% 35%; transition: transform 600ms var(--ease); }
+  .post:hover .post__img { transform: scale(1.04); }
+  .post__body { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 22px; flex-grow: 1; }
+  .post__meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 0.875rem; color: var(--ink-soft); }
+  .post__title { font-size: 1.375rem; line-height: 1.12; }
+  .post__title a { text-decoration: none; }
+  /* Toda la tarjeta es clicable */
+  .post__title a::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+  .post__title a:focus-visible { outline: none; }
+  .post:has(a:focus-visible) { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .post__summary { color: var(--ink-soft); font-size: 0.9375rem; flex-grow: 1; }
+  .post__more { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--orange-ink); font-size: 0.9375rem; text-decoration: underline; text-underline-offset: 4px; }
+  .post__more :global(svg) { transition: transform 200ms var(--ease); }
+  .post:hover .post__more :global(svg) { transform: translateX(3px); }
+</style>

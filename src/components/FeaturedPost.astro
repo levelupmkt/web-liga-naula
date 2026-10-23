@@ -1,0 +1,58 @@
+---
+import { Image } from 'astro:assets';
+import { formatDate, type Post } from '../content/site';
+import Icon from './Icon.astro';
+
+interface Props { post: Post; headingLevel?: 'h2' | 'h3' }
+const { post, headingLevel: H = 'h3' } = Astro.props;
+---
+<article class="featured" data-reveal>
+  {post.image && (
+    <div class="featured__media">
+      <Image src={post.image.src} alt={post.image.alt} widths={[480, 800, 1100]} sizes="(min-width: 1024px) 50vw, 100vw" class="featured__img" />
+      <span class="featured__badge">Destacado</span>
+    </div>
+  )}
+  <div class="featured__body">
+    <p class="featured__meta">
+      <span class="tag tag--dark">{post.category}</span>
+      <time datetime={post.date}>{formatDate(post.date)}</time>
+    </p>
+    <H class="featured__title">{post.title}</H>
+    {post.location && <p class="featured__place"><Icon name="pin" size={16} /> {post.location}</p>}
+    <p class="featured__summary">{post.summary}</p>
+    <a class="btn" href={`/actualidad/${post.id}`}>
+      Leer la nota <Icon name="arrow-right" size={18} />
+    </a>
+  </div>
+</article>
+
+<style>
+  .featured {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    border-radius: 24px;
+    overflow: hidden;
+    background: var(--orange);
+  }
+  .featured__media { position: relative; }
+  .featured__img { width: 100%; height: 100%; aspect-ratio: 4 / 3.4; object-fit: cover; object-position: 50% 30%; }
+  .featured__badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--white);
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .featured__body { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 18px; padding: clamp(28px, 4vw, 56px); }
+  .featured__meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 0.875rem; }
+  .featured__title { font-size: clamp(1.75rem, 3.2vw, 2.75rem); line-height: 1.02; }
+  .featured__place { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9375rem; }
+  .featured__summary { font-size: 1.0625rem; max-width: 44ch; }
+  .featured .btn:hover { background: var(--white); border-color: var(--white); color: var(--ink); }
+  @media (max-width: 1023px) { .featured { grid-template-columns: 1fr; } }
+</style>

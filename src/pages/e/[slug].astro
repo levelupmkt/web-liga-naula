@@ -1,0 +1,375 @@
+---
+import '../../styles/global.css';
+import '../../styles/admin.css';
+import { getImage } from 'astro:assets';
+import Icon from '../../components/Icon.astro';
+import { photos } from '../../content/site';
+import { surveys, sectores, parroquias, optionsOf, AGE_RANGES, type Survey } from '../../content/admin-demo';
+
+export function getStaticPaths() {
+  return surveys.filter((s) => s.estado !== 'borrador').map((survey) => ({ params: { slug: survey.slug }, props: { survey } }));
+}
+
+interface Props { survey: Survey }
+const { survey: s } = Astro.props;
+const og = await getImage({ src: photos.group.src, width: 1200, height: 630, format: 'jpg' });
+const ogUrl = new URL(og.src, Astro.site).toString();
+
+const payload = {
+  slug: s.slug,
+  estado: s.estado,
+  mensajeFinal: s.mensajeFinal,
+  preguntas: s.preguntas.map((q) => ({ id: q.id, tipo: q.tipo, enunciado: q.enunciado, opciones: optionsOf(q), obligatoria: q.obligatoria })),
+  sectores: sectores.map((x, i) => ({ i, p: x.parroquiaId, barrio: x.barrio })),
+};
+const blocked = s.estado === 'pausada' || s.estado === 'cerrada';
+---
+<!doctype html>
+<html lang="es-EC">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{s.titulo} · Ligia Naula</title>
+    <meta name="description" content={s.descripcion} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={s.titulo} />
+    <meta property="og:description" content={s.descripcion} />
+    <meta property="og:image" content={ogUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#FF7400" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+  </head>
+  <body class="vote-body">
+    <header class="vtop">
+      <a class="vtop__brand" href="/"><span class="vtop__mark" aria-hidden="true">L</span> Ligia Naula</a>
+      <span class="vtop__demo">Demo</span>
+    </header>
+
+    <main class="vote">
+      <div class="progress" aria-hidden="true"><span data-progress></span></div>
+
+      <!-- Avisos -->
+      <section class="card notice" hidden={!blocked} data-notice>
+        <span class="notice__icon"><Icon name={s.estado === 'cerrada' ? 'lock' : 'pause'} size={26} /></span>
+        <h1 data-notice-title>{s.estado === 'cerrada' ? 'Esta encuesta ya cerró' : 'Encuesta pausada'}</h1>
+        <p class="muted" data-notice-text>{s.estado === 'cerrada' ? 'Gracias a todas las personas que participaron.' : 'Vuelve pronto: la encuesta se reanudará en los próximos días.'}</p>
+        <a class="abtn abtn--primary" href="/">Conoce a Ligia</a>
+      </section>
+
+      <section class="card notice" hidden data-voted>
+        <span class="notice__icon"><Icon name="check" size={26} /></span>
+        <h1>Ya participaste en esta encuesta</h1>
+        <p class="muted">Solo se permite una respuesta por persona.</p>
+        <button class="abtn abtn--ghost abtn--sm" type="button" data-reset-demo>Reiniciar demo</button>
+      </section>
+
+      <form class="card flow" hidden={blocked} data-flow novalidate>
+        <!-- Paso: introducción -->
+        <div class="step" data-step="intro">
+          <p class="eyebrow">Encuesta ciudadana · Santa Rosa</p>
+          <h1 class="vtitle">{s.titulo}</h1>
+          <p class="vdesc">{s.descripcion}</p>
+          <ul class="facts">
+            <li><Icon name="clock" size={16} /> Menos de 1 minuto</li>
+            <li><Icon name="list" size={16} /> {s.preguntas.length} preguntas</li>
+            <li><Icon name="shield" size={16} /> Tu respuesta es anónima</li>
+          </ul>
+          <button class="abtn abtn--orange big" type="button" data-next>Comenzar <Icon name="arrow-right" size={18} /></button>
+        </div>
+
+        <!-- Paso: sector -->
+        <div class="step" data-step="sector" hidden>
+          <h2 class="qtitle">¿Dónde vives?</h2>
+          <p class="muted small">Solo usamos tu parroquia y barrio para ver resultados por zona.</p>
+          <div class="afield">
+            <label for="v-p">Parroquia <span class="req">*</span></label>
+            <select class="aselect big-input" id="v-p" data-vp>
+              <option value="">Elige tu parroquia</option>
+              {parroquias.map((p) => <option value={p.id}>{p.nombre}</option>)}
+            </select>
+          </div>
+          <div class="afield">
+            <label for="v-b">Barrio <span class="req">*</span></label>
+            <select class="aselect big-input" id="v-b" disabled data-vb><option value="">Primero elige la parroquia</option></select>
+          </div>
+          <fieldset class="afield ages">
+            <legend class="afield__label">Rango de edad (opcional)</legend>
+            <div class="chips">
+              {AGE_RANGES.map((a) => <label><input type="radio" name="edad" value={a} /><span>{a}</span></label>)}
+            </div>
+          </fieldset>
+        </div>
+
+        <!-- Paso: preguntas (se generan) -->
+        <div data-questions></div>
+
+        <!-- Paso: verificación -->
+        <div class="step" data-step="email" hidden>
+          <h2 class="qtitle">Confirma tu participación</h2>
+          <p class="muted small">Te enviaremos un código para verificar que eres una persona real. Tu correo no se guarda junto a tus respuestas.</p>
+          <div class="afield">
+            <label for="v-mail">Correo electrónico <span class="req">*</span></label>
+            <input class="ainput big-input" id="v-mail" type="email" inputmode="email" autocomplete="email" placeholder="tucorreo@ejemplo.com" data-mail />
+          </div>
+          <label class="consent">
+            <input type="checkbox" data-consent />
+            <span>Acepto el tratamiento de mis datos según la <a href="/privacidad" target="_blank">política de privacidad</a>. <span class="req">*</span></span>
+          </label>
+        </div>
+
+        <!-- Paso: código -->
+        <div class="step" data-step="code" hidden>
+          <span class="code-icon"><Icon name="mail" size={24} /></span>
+          <h2 class="qtitle">Revisa tu correo</h2>
+          <p class="muted small">Escribe el código de 6 dígitos que enviamos a <strong data-mail-echo></strong>. Vence en <strong data-timer>10:00</strong>.</p>
+          <p class="hint"><Icon name="info" size={14} /> Demo: el código es <strong>123456</strong></p>
+          <fieldset class="otp">
+            <legend class="sr-only">Código de verificación</legend>
+            {Array.from({ length: 6 }, (_, i) => <input class="ainput otp__digit" inputmode="numeric" maxlength="1" aria-label={`Dígito ${i + 1}`} autocomplete={i === 0 ? 'one-time-code' : 'off'} />)}
+          </fieldset>
+          <button class="abtn abtn--ghost abtn--sm" type="button" data-resend>Reenviar código</button>
+        </div>
+
+        <!-- Paso: gracias -->
+        <div class="step thanks" data-step="done" hidden>
+          <span class="thanks__icon"><Icon name="heart" size={30} /></span>
+          <h2 class="vtitle">¡Respuesta enviada!</h2>
+          <p class="vdesc">{s.mensajeFinal}</p>
+          <div class="thanks__actions">
+            <a class="abtn abtn--primary" href={`https://wa.me/?text=${encodeURIComponent(`${s.titulo}: participa aquí ${new URL(`/e/${s.slug}`, Astro.site)}`)}`} target="_blank" rel="noopener noreferrer">Compartir por WhatsApp</a>
+            <a class="abtn" href="/">Conoce a Ligia</a>
+          </div>
+        </div>
+
+        <p class="error" role="alert" data-error></p>
+        <div class="nav" data-nav hidden>
+          <button class="abtn" type="button" data-prev><Icon name="arrow-left" size={16} /> Atrás</button>
+          <button class="abtn abtn--primary" type="submit" data-next-btn>Siguiente <Icon name="arrow-right" size={16} /></button>
+        </div>
+      </form>
+
+      <p class="foot small muted">Encuesta sin fines de difusión pública de resultados · <a href="/privacidad">Privacidad</a></p>
+    </main>
+
+    <script type="application/json" id="vote-data" set:html={JSON.stringify(payload)}></script>
+
+    <script>
+      type Q = { id: string; tipo: string; enunciado: string; opciones: string[]; obligatoria: boolean };
+      const D = JSON.parse(document.getElementById('vote-data')!.textContent!) as { slug: string; estado: string; mensajeFinal: string; preguntas: Q[]; sectores: Array<{ i: number; p: string; barrio: string }> };
+      const $ = <E extends Element>(s: string, r: ParentNode = document) => r.querySelector<E>(s)!;
+      const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+      const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} } };
+
+      const flow = $<HTMLFormElement>('[data-flow]');
+      const errorEl = $<HTMLElement>('[data-error]');
+
+      // Silencio electoral (se activa desde /admin/ajustes en la demo)
+      if (store.get('demo-silencio') === '1' && D.estado === 'activa') {
+        flow.hidden = true;
+        const n = $<HTMLElement>('[data-notice]');
+        n.hidden = false;
+        $('[data-notice-title]').textContent = 'Silencio electoral';
+        $('[data-notice-text]').textContent = 'Durante el periodo de silencio electoral las encuestas no reciben respuestas.';
+      } else if (store.get(`demo-voted-${D.slug}`) === '1' && D.estado === 'activa') {
+        flow.hidden = true;
+        $<HTMLElement>('[data-voted]').hidden = false;
+      }
+      $('[data-reset-demo]').addEventListener('click', () => { store.set(`demo-voted-${D.slug}`, '0'); location.reload(); });
+
+      // Preguntas, una por pantalla
+      $('[data-questions]').innerHTML = D.preguntas.map((q, i) => {
+        const req = q.obligatoria ? ' <span class="req">*</span>' : '';
+        let body = '';
+        if (q.tipo === 'unica' || q.tipo === 'sino') body = `<div class="opts ${q.tipo === 'sino' ? 'opts--2' : ''}">${q.opciones.map((o) => `<label class="opt"><input type="radio" name="${q.id}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div>`;
+        if (q.tipo === 'multiple') body = `<p class="small muted">Puedes elegir hasta 3.</p><div class="opts">${q.opciones.map((o) => `<label class="opt opt--sq"><input type="checkbox" name="${q.id}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div>`;
+        if (q.tipo === 'escala') body = `<div class="scale">${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="${q.id}" value="${n}"><span>${n}</span></label>`).join('')}</div><div class="scale__labels"><span>Muy mal</span><span>Muy bien</span></div>`;
+        if (q.tipo === 'texto') body = `<textarea class="atextarea big-input" name="${q.id}" rows="4" maxlength="500" placeholder="Escribe tu respuesta"></textarea>`;
+        return `<fieldset class="step q" data-step="q-${q.id}" data-q="${q.id}" hidden><legend class="qtitle"><span class="qn">${i + 1}/${D.preguntas.length}</span>${esc(q.enunciado)}${req}</legend>${body}</fieldset>`;
+      }).join('');
+
+      // Máximo 3 en opción múltiple
+      flow.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement;
+        if (t.type === 'checkbox' && t.name.startsWith('p')) {
+          const checked = flow.querySelectorAll<HTMLInputElement>(`input[name="${t.name}"]:checked`);
+          if (checked.length > 3) { t.checked = false; errorEl.textContent = 'Puedes elegir hasta 3 opciones.'; }
+          else errorEl.textContent = '';
+        }
+      });
+
+      const steps = ['intro', 'sector', ...D.preguntas.map((q) => `q-${q.id}`), 'email', 'code', 'done'];
+      let cur = 0;
+      let attempts = 0;
+      let timer: number;
+
+      function show(i: number) {
+        cur = i;
+        errorEl.textContent = '';
+        steps.forEach((k, j) => ($<HTMLElement>(`[data-step="${k}"]`).hidden = j !== i));
+        const name = steps[i];
+        $<HTMLElement>('[data-nav]').hidden = name === 'intro' || name === 'done';
+        $<HTMLElement>('[data-prev]').hidden = name === 'code';
+        $('[data-next-btn]').innerHTML = name === 'email' ? 'Enviar código' : name === 'code' ? 'Verificar y enviar' : 'Siguiente →';
+        $<HTMLElement>('[data-progress]').style.width = `${(i / (steps.length - 1)) * 100}%`;
+        const focusable = $<HTMLElement>(`[data-step="${name}"]`).querySelector<HTMLElement>('select, input, textarea, button');
+        if (name !== 'intro') focusable?.focus({ preventScroll: true });
+        window.scrollTo({ top: 0 });
+      }
+
+      function validate(): string {
+        const name = steps[cur];
+        if (name === 'sector') {
+          if (!$<HTMLSelectElement>('[data-vp]').value) return 'Elige tu parroquia.';
+          if (!$<HTMLSelectElement>('[data-vb]').value) return 'Elige tu barrio.';
+        }
+        if (name.startsWith('q-')) {
+          const q = D.preguntas.find((x) => `q-${x.id}` === name)!;
+          if (q.obligatoria) {
+            const answered = q.tipo === 'texto'
+              ? !!flow.querySelector<HTMLTextAreaElement>(`textarea[name="${q.id}"]`)!.value.trim()
+              : !!flow.querySelector(`input[name="${q.id}"]:checked`);
+            if (!answered) return 'Esta pregunta es obligatoria.';
+          }
+        }
+        if (name === 'email') {
+          const mail = $<HTMLInputElement>('[data-mail]');
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.value.trim())) return 'Escribe un correo válido.';
+          if (!$<HTMLInputElement>('[data-consent]').checked) return 'Debes aceptar la política de privacidad para participar.';
+        }
+        if (name === 'code') {
+          const code = [...flow.querySelectorAll<HTMLInputElement>('.otp__digit')].map((d) => d.value).join('');
+          if (code.length < 6) return 'Completa los 6 dígitos.';
+          if (code !== '123456') {
+            attempts++;
+            if (attempts >= 5) return 'Superaste el máximo de 5 intentos. Pide un código nuevo.';
+            return `Código incorrecto. Te quedan ${5 - attempts} intentos.`;
+          }
+        }
+        return '';
+      }
+
+      function startTimer() {
+        clearInterval(timer);
+        let left = 600;
+        const out = $('[data-timer]');
+        timer = window.setInterval(() => {
+          left--;
+          out.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+          if (left <= 0) clearInterval(timer);
+        }, 1000);
+      }
+
+      $('[data-next]').addEventListener('click', () => show(1));
+      $('[data-prev]').addEventListener('click', () => show(Math.max(0, cur - 1)));
+      flow.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const err = validate();
+        if (err) { errorEl.textContent = err; return; }
+        const name = steps[cur];
+        if (name === 'email') {
+          $('[data-mail-echo]').textContent = $<HTMLInputElement>('[data-mail]').value.trim();
+          attempts = 0;
+          startTimer();
+        }
+        if (name === 'code') {
+          clearInterval(timer);
+          store.set(`demo-voted-${D.slug}`, '1');
+        }
+        show(cur + 1);
+      });
+      $('[data-resend]').addEventListener('click', () => { attempts = 0; startTimer(); errorEl.textContent = 'Te enviamos un código nuevo.'; });
+
+      // Selects dependientes parroquia → barrio
+      const vp = $<HTMLSelectElement>('[data-vp]');
+      const vb = $<HTMLSelectElement>('[data-vb]');
+      vp.addEventListener('change', () => {
+        vb.innerHTML = '<option value="">Elige tu barrio</option>' + D.sectores.filter((x) => x.p === vp.value).map((x) => `<option value="${x.i}">${esc(x.barrio)}</option>`).join('');
+        vb.disabled = !vp.value;
+      });
+
+      // Dígitos del código
+      const digits = [...flow.querySelectorAll<HTMLInputElement>('.otp__digit')];
+      digits.forEach((d, i) => {
+        d.addEventListener('input', () => { d.value = d.value.replace(/\D/g, '').slice(0, 1); if (d.value && digits[i + 1]) digits[i + 1].focus(); });
+        d.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !d.value && digits[i - 1]) digits[i - 1].focus(); });
+        d.addEventListener('paste', (e) => {
+          const t = e.clipboardData?.getData('text').replace(/\D/g, '') ?? '';
+          if (t.length > 1) { e.preventDefault(); t.slice(0, 6).split('').forEach((c, k) => digits[k] && (digits[k].value = c)); }
+        });
+      });
+    </script>
+
+    <style is:global>
+      .vote-body { background: var(--surface); min-height: 100dvh; }
+      .vote-body [hidden] { display: none !important; }
+      .vtop { display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 16px; background: var(--orange); }
+      .vtop__brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 1.125rem; text-decoration: none; }
+      .vtop__mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--ink); color: var(--orange); }
+      .vtop__demo { padding: 4px 10px; border-radius: 999px; background: rgb(255 255 255 / 0.85); font-size: 0.75rem; }
+
+      .vote { width: min(560px, 100%); margin-inline: auto; padding: 0 16px 40px; }
+      .progress { height: 4px; margin: 0 -16px 24px; background: #e5e5e5; }
+      .progress span { display: block; height: 100%; width: 0; background: var(--ink); transition: width 300ms var(--ease); }
+      .card { padding: clamp(22px, 5vw, 32px); border-radius: 20px; background: var(--white); box-shadow: var(--shadow); }
+      .card[hidden], .step[hidden] { display: none; }
+      .flow { display: grid; gap: 20px; }
+      .step { display: grid; gap: 16px; margin: 0; padding: 0; border: 0; min-width: 0; }
+      .eyebrow { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--orange-ink); }
+      .vtitle { font-size: clamp(2rem, 8vw, 2.75rem); line-height: 1; }
+      .vdesc { font-size: 1.0625rem; color: var(--ink-soft); }
+      .facts { display: grid; gap: 8px; list-style: none; margin: 4px 0; padding: 0; font-size: 0.9375rem; }
+      .facts li { display: flex; align-items: center; gap: 8px; }
+      .facts svg { color: var(--orange-ink); }
+      .big { min-height: 54px; font-size: 1.0625rem; border-radius: 14px; }
+      .big-input { min-height: 52px; font-size: 1rem; }
+      .qtitle { font-family: var(--font-display); font-weight: 500; font-size: clamp(1.375rem, 5vw, 1.75rem); line-height: 1.12; padding: 0; margin-bottom: 4px; }
+      .qn { display: block; margin-bottom: 8px; font-family: var(--font-body); font-size: 0.8125rem; color: var(--ink-soft); }
+      .req { color: var(--orange-ink); }
+
+      .opts { display: grid; gap: 10px; }
+      .opts--2 { grid-template-columns: 1fr 1fr; }
+      .opt { cursor: pointer; }
+      .opt input, .chips input, .scale input { position: absolute; opacity: 0; }
+      .opt span { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 12px 16px; border-radius: 14px; border: 1.5px solid #d4d4d4; font-size: 1rem; transition: border-color 150ms var(--ease), background-color 150ms var(--ease); }
+      .opt span::before { content: ''; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #b5b5b5; transition: all 150ms var(--ease); }
+      .opt--sq span::before { border-radius: 6px; }
+      .opt input:checked + span { border-color: var(--ink); background: var(--orange-soft); }
+      .opt input:checked + span::before { border-color: var(--ink); background: var(--ink); box-shadow: inset 0 0 0 3px var(--orange-soft); }
+      .opt input:focus-visible + span, .scale input:focus-visible + span, .chips input:focus-visible + span { outline: 3px solid var(--orange); outline-offset: 2px; }
+      .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+      .scale label { cursor: pointer; }
+      .scale span { display: grid; place-items: center; height: 56px; border-radius: 14px; border: 1.5px solid #d4d4d4; font-family: var(--font-display); font-size: 1.375rem; }
+      .scale input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--orange); }
+      .scale__labels { display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--ink-soft); }
+
+      .ages { margin: 0; padding: 0; border: 0; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+      .chips label { cursor: pointer; }
+      .chips span { display: inline-block; padding: 8px 14px; border-radius: 999px; border: 1.5px solid #d4d4d4; font-size: 0.9375rem; }
+      .chips input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--white); }
+
+      .consent { display: flex; gap: 12px; align-items: flex-start; font-size: 0.9375rem; cursor: pointer; }
+      .consent input { width: 22px; height: 22px; margin-top: 1px; flex-shrink: 0; accent-color: var(--ink); }
+      .consent a { color: var(--orange-ink); }
+      .code-icon, .thanks__icon, .notice__icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--orange-soft); color: var(--orange-ink); }
+      .hint { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 6px 12px; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 0.8125rem; }
+      .otp { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 0; padding: 0; border: 0; }
+      .otp__digit { min-height: 60px; padding: 0; text-align: center; font-family: var(--font-display); font-size: 1.625rem; }
+      .thanks { justify-items: center; text-align: center; padding-block: 16px; }
+      .thanks__icon { background: var(--orange); color: var(--ink); width: 72px; height: 72px; border-radius: 50%; }
+      .thanks__actions { display: grid; gap: 10px; width: 100%; }
+      .notice { display: grid; justify-items: center; gap: 12px; text-align: center; }
+      .notice h1 { font-size: 1.75rem; }
+
+      .error { color: #b91c1c; font-size: 0.9375rem; min-height: 0; }
+      .error:empty { display: none; }
+      .nav { display: flex; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+      .nav[hidden] { display: none; }
+      .nav .abtn { min-height: 48px; padding-inline: 20px; }
+      .nav [data-next-btn] { margin-left: auto; }
+      .foot { margin-top: 20px; text-align: center; }
+    </style>
+  </body>
+</html>

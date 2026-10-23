@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Contact from '../components/Contact.astro';
+import NextPages from '../components/NextPages.astro';
+import { contact, photos } from '../content/site';
+---
+<BaseLayout title="Contacto · Ligia Naula" description={contact.lead}>
+  <PageHero kicker="Contacto" title={contact.title} lead={contact.lead} photo={photos.hug} />
+  <Contact />
+  <NextPages current="/contacto" />
+</BaseLayout>

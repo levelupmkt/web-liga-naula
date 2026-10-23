@@ -1,0 +1,184 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import {
+  surveys, surveyResults, sectores, fieldReports, audit, currentUser,
+  STATUS_LABEL, FIELD_TYPE_LABEL, FIELD_TYPE_COLOR, formatNum, formatShortDate,
+} from '../../content/admin-demo';
+
+const withResults = surveys.filter((s) => s.estado !== 'borrador');
+const totals = withResults.map((s) => ({ s, r: surveyResults(s) }));
+const totalParticipaciones = totals.reduce((a, t) => a + t.r.total, 0);
+const activas = surveys.filter((s) => s.estado === 'activa');
+const barriosConDatos = new Set(totals.flatMap((t) => t.r.participacion.map((p) => p[0]))).size;
+const reportesSemana = fieldReports.filter((f) => f.fecha >= '2026-10-17').length;
+
+// Participación diaria (últimos 14 días, todas las encuestas)
+const days = Array.from({ length: 14 }, (_, i) => {
+  const d = new Date(Date.UTC(2026, 9, 23 - 13 + i));
+  return d.toISOString().slice(0, 10);
+});
+const daily = days.map((d) => totals.reduce((a, t) => a + (t.r.timeline.find((x) => x.fecha === d)?.n ?? 0), 0));
+const max = Math.max(...daily, 1);
+const W = 640, H = 200, P = 8;
+const pts = daily.map((v, i) => [P + (i * (W - 2 * P)) / (daily.length - 1), H - P - (v / max) * (H - 2 * P - 20)]);
+const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+const area = `${line} L${pts.at(-1)![0].toFixed(1)} ${H - P} L${pts[0][0].toFixed(1)} ${H - P} Z`;
+const week = daily.slice(-7).reduce((a, b) => a + b, 0);
+const prevWeek = daily.slice(0, 7).reduce((a, b) => a + b, 0);
+const delta = prevWeek ? Math.round(((week - prevWeek) / prevWeek) * 100) : 0;
+
+const firstName = currentUser.nombre.split(' ')[0];
+---
+<AdminLayout title="Inicio">
+  <div class="page-head">
+    <div>
+      <h1>Hola, {firstName}</h1>
+      <p>Jueves 23 de octubre de 2026 · Resumen de la campaña</p>
+    </div>
+    <div class="page-head__actions">
+      <a class="abtn" href="/admin/campo" data-roles="admin,analista,campo"><Icon name="clipboard" size={18} /> Nuevo reporte</a>
+      <a class="abtn abtn--orange" href="/admin/encuestas/nueva" data-roles="admin,analista"><Icon name="plus" size={18} /> Nueva encuesta</a>
+    </div>
+  </div>
+
+  <div class="grid grid--kpi" data-roles="admin,analista,lector">
+    <div class="panel kpi">
+      <span class="kpi__label"><span class="kpi__icon"><Icon name="users" size={18} /></span> Participaciones</span>
+      <span class="kpi__value">{formatNum(totalParticipaciones)}</span>
+      <span class="kpi__delta">{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}% vs. semana anterior</span>
+    </div>
+    <div class="panel kpi">
+      <span class="kpi__label"><span class="kpi__icon"><Icon name="chart" size={18} /></span> Encuestas activas</span>
+      <span class="kpi__value">{activas.length}</span>
+      <span class="kpi__delta kpi__delta--neutral">{surveys.length} en total</span>
+    </div>
+    <div class="panel kpi">
+      <span class="kpi__label"><span class="kpi__icon"><Icon name="map" size={18} /></span> Barrios con respuestas</span>
+      <span class="kpi__value">{barriosConDatos}<small class="muted" style="font-size:1rem"> / {sectores.length}</small></span>
+      <span class="kpi__delta kpi__delta--neutral">10 parroquias</span>
+    </div>
+    <div class="panel kpi">
+      <span class="kpi__label"><span class="kpi__icon"><Icon name="clipboard" size={18} /></span> Reportes de campo</span>
+      <span class="kpi__value">{fieldReports.length}</span>
+      <span class="kpi__delta">{reportesSemana} esta semana</span>
+    </div>
+  </div>
+
+  <div class="grid grid--main mt" data-roles="admin,analista,lector">
+    <section class="panel">
+      <div class="panel__head">
+        <div>
+          <h2 class="panel__title">Participación diaria</h2>
+          <p class="panel__sub">Últimos 14 días · todas las encuestas</p>
+        </div>
+        <span class="badge badge--plain">{formatNum(week)} esta semana</span>
+      </div>
+      <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Participación diaria: máximo ${max} el ${formatShortDate(days[daily.indexOf(max)])}`}>
+        <defs>
+          <linearGradient id="fillg" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#FF7400" stop-opacity="0.35" />
+            <stop offset="100%" stop-color="#FF7400" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        {[0.25, 0.5, 0.75].map((f) => <line x1={P} x2={W - P} y1={P + 20 + f * (H - 2 * P - 20)} y2={P + 20 + f * (H - 2 * P - 20)} class="chart__grid" />)}
+        <path d={area} fill="url(#fillg)" />
+        <path d={line} class="chart__line" />
+        {pts.map((p, i) => <circle cx={p[0]} cy={p[1]} r="3.5" class="chart__dot"><title>{formatShortDate(days[i])}: {daily[i]}</title></circle>)}
+      </svg>
+      <div class="chart__axis">
+        {days.filter((_, i) => i % 2 === 0).map((d) => <span>{formatShortDate(d)}</span>)}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Encuestas activas</h2>
+        <a class="small" href="/admin/encuestas">Ver todas</a>
+      </div>
+      <ul class="active-list">
+        {activas.map((s) => {
+          const r = surveyResults(s);
+          return (
+            <li>
+              <a href={`/admin/encuestas/${s.id}`}>
+                <span class="active-list__top">
+                  <strong>{s.titulo}</strong>
+                  <span class="badge badge--activa">{STATUS_LABEL[s.estado]}</span>
+                </span>
+                <span class="active-list__meta">{formatNum(r.total)} participaciones · cierra {formatShortDate(s.cierra)}</span>
+                <span class="bar__track"><span class="bar__fill" style={`width:${Math.min(100, (r.total / 2000) * 100)}%`}></span></span>
+                <span class="small muted">Meta: 2.000 participaciones</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  </div>
+
+  <div class="grid grid--main mt">
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Últimos reportes de campo</h2>
+        <a class="small" href="/admin/campo">Ver todos</a>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Fecha</th><th>Brigadista</th><th>Sector</th><th>Tipo</th><th class="num">Recept.</th></tr></thead>
+          <tbody>
+            {fieldReports.slice(0, 6).map((f) => (
+              <tr>
+                <td class="small">{f.fecha}</td>
+                <td>{f.usuario}</td>
+                <td>{sectores[f.sector].barrio}<br /><span class="small muted">{sectores[f.sector].parroquia}</span></td>
+                <td><span class="type-dot" style={`--c:${FIELD_TYPE_COLOR[f.tipo]}`}>{FIELD_TYPE_LABEL[f.tipo]}</span></td>
+                <td class="num">{'★'.repeat(f.receptividad)}<span class="muted">{'★'.repeat(5 - f.receptividad)}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" data-roles="admin,analista,lector">
+      <div class="panel__head">
+        <h2 class="panel__title">Actividad reciente</h2>
+        <span class="small muted">Auditoría</span>
+      </div>
+      <ol class="feed">
+        {audit.map((a) => (
+          <li>
+            <span class="feed__dot" aria-hidden="true"></span>
+            <p><strong>{a.usuario}</strong> {a.accion} <strong>{a.entidad}</strong></p>
+            <p class="small muted">{a.fecha}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .mt { margin-top: 16px; }
+  .chart { width: 100%; height: auto; display: block; }
+  .chart__grid { stroke: var(--line); stroke-dasharray: 4 4; }
+  .chart__line { fill: none; stroke: var(--orange); stroke-width: 2.5; stroke-linejoin: round; }
+  .chart__dot { fill: var(--white); stroke: var(--orange); stroke-width: 2; }
+  .chart__axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.75rem; color: var(--ink-soft); }
+
+  .active-list { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+  .active-list a { display: grid; gap: 6px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); text-decoration: none; transition: border-color 150ms var(--ease), background-color 150ms var(--ease); }
+  .active-list a:hover { border-color: var(--ink); background: #fafafa; }
+  .active-list__top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .active-list__meta { font-size: 0.875rem; color: var(--ink-soft); }
+
+  .type-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; white-space: nowrap; }
+  .type-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+
+  .feed { position: relative; display: grid; gap: 16px; list-style: none; margin: 0; padding: 0 0 0 20px; }
+  .feed::before { content: ''; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .feed li { position: relative; font-size: 0.9375rem; }
+  .feed__dot { position: absolute; left: -20px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 0 3px var(--white); }
+  .feed strong { font-weight: 600; }
+</style>

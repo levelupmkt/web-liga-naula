@@ -1,0 +1,129 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { users, ROLE_LABEL, ROLE_DESC, type Role } from '../../content/admin-demo';
+
+const roles = Object.keys(ROLE_LABEL) as Role[];
+const matrix: Array<[string, Record<Role, string>]> = [
+  ['Encuestas', { admin: 'Crear y editar', analista: 'Crear y editar', campo: '—', lector: '—' }],
+  ['Resultados y mapa', { admin: 'Ver y exportar', analista: 'Ver y exportar', campo: '—', lector: 'Ver' }],
+  ['Reportes de campo', { admin: 'Ver todos', analista: 'Ver todos', campo: 'Crear y ver los suyos', lector: 'Ver todos' }],
+  ['Usuarios y ajustes', { admin: 'Sí', analista: '—', campo: '—', lector: '—' }],
+];
+const initials = (n: string) => n.split(' ').map((w) => w[0]).slice(0, 2).join('');
+---
+<AdminLayout title="Usuarios" roles={['admin']}>
+  <div class="page-head">
+    <div>
+      <h1>Usuarios y roles</h1>
+      <p>Quién accede al panel y qué puede hacer cada persona.</p>
+    </div>
+    <div class="page-head__actions">
+      <button class="abtn abtn--orange" type="button" data-invite><Icon name="plus" size={18} /> Invitar usuario</button>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Usuario</th><th>Rol</th><th>2FA</th><th>Último acceso</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+        <tbody>
+          {users.map((u) => (
+            <tr>
+              <td>
+                <div class="person">
+                  <span class={`avatar avatar--${u.rol}`} aria-hidden="true">{initials(u.nombre)}</span>
+                  <span><strong>{u.nombre}</strong><br /><span class="small muted">{u.correo}</span></span>
+                </div>
+              </td>
+              <td>
+                <select class="aselect role-select" aria-label={`Rol de ${u.nombre}`} data-user={u.nombre}>
+                  {roles.map((r) => <option value={r} selected={r === u.rol}>{ROLE_LABEL[r]}</option>)}
+                </select>
+              </td>
+              <td>{u.mfa ? <span class="badge badge--activa">Activo</span> : <span class="badge badge--pausada">Pendiente</span>}</td>
+              <td class="small muted">{u.ultimo}</td>
+              <td>{u.activo ? <span class="badge badge--plain">Activo</span> : <span class="badge badge--cerrada">Desactivado</span>}</td>
+              <td class="row-actions">
+                <button class="abtn abtn--sm abtn--ghost" type="button" data-demo={`Demo: se reenviaría la invitación a ${u.correo}`}>Reenviar</button>
+                <button class="abtn abtn--sm abtn--ghost abtn--danger" type="button" data-demo={`Demo: ${u.nombre} quedaría ${u.activo ? 'desactivado' : 'activado'}`}>{u.activo ? 'Desactivar' : 'Activar'}</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel mt">
+    <div class="panel__head">
+      <h2 class="panel__title">Permisos por rol</h2>
+      <span class="small muted">Se validan en el servidor y en la base de datos, no solo en la interfaz.</span>
+    </div>
+    <div class="role-cards">
+      {roles.map((r) => (
+        <div class="role-card">
+          <span class={`avatar avatar--${r}`} aria-hidden="true"><Icon name={r === 'admin' ? 'shield' : r === 'campo' ? 'clipboard' : r === 'lector' ? 'eye' : 'chart'} size={18} /></span>
+          <strong>{ROLE_LABEL[r]}</strong>
+          <span class="small muted">{ROLE_DESC[r]}</span>
+        </div>
+      ))}
+    </div>
+    <div class="table-wrap">
+      <table class="table matrix">
+        <thead><tr><th>Módulo</th>{roles.map((r) => <th>{ROLE_LABEL[r]}</th>)}</tr></thead>
+        <tbody>
+          {matrix.map(([mod, row]) => (
+            <tr><td><strong>{mod}</strong></td>{roles.map((r) => <td class:list={{ muted: row[r] === '—' }}>{row[r]}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <dialog class="adialog" data-invite-dialog aria-labelledby="invite-title">
+    <form method="dialog">
+      <div class="adialog__body">
+        <h2 id="invite-title" class="panel__title">Invitar usuario</h2>
+        <div class="afield"><label for="i-name">Nombre</label><input class="ainput" id="i-name" required placeholder="Nombre y apellido" /></div>
+        <div class="afield"><label for="i-mail">Correo</label><input class="ainput" id="i-mail" type="email" required placeholder="correo@ejemplo.ec" /></div>
+        <div class="afield"><label for="i-role">Rol</label>
+          <select class="aselect" id="i-role">{roles.map((r) => <option value={r} selected={r === 'campo'}>{ROLE_LABEL[r]} — {ROLE_DESC[r]}</option>)}</select>
+        </div>
+        <p class="small muted"><Icon name="shield" size={14} /> Deberá activar el segundo factor en su primer acceso.</p>
+      </div>
+      <div class="adialog__foot">
+        <button class="abtn" value="cancel" formnovalidate>Cancelar</button>
+        <button class="abtn abtn--primary" value="ok" data-invite-send>Enviar invitación</button>
+      </div>
+    </form>
+  </dialog>
+</AdminLayout>
+
+<script>
+  const dlg = document.querySelector<HTMLDialogElement>('[data-invite-dialog]')!;
+  document.querySelector('[data-invite]')!.addEventListener('click', () => dlg.showModal());
+  dlg.addEventListener('close', () => {
+    if (dlg.returnValue === 'ok') (window as any).demoToast(`Demo: invitación enviada a ${(document.getElementById('i-mail') as HTMLInputElement).value}`);
+    dlg.querySelector('form')!.reset();
+  });
+  document.querySelectorAll<HTMLSelectElement>('.role-select').forEach((s) =>
+    s.addEventListener('change', () => (window as any).demoToast(`Demo: ${s.dataset.user} ahora es ${s.selectedOptions[0].text}`)),
+  );
+</script>
+
+<style>
+  .mt { margin-top: 16px; }
+  .person { display: flex; align-items: center; gap: 12px; }
+  .avatar { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; font-size: 0.8125rem; }
+  .avatar--admin { background: var(--ink); color: var(--orange); }
+  .avatar--analista { background: var(--orange); color: var(--ink); }
+  .avatar--campo { background: #dcfce7; color: #166534; }
+  .avatar--lector { background: #e0e7ff; color: #3730a3; }
+  .role-select { width: auto; min-height: 36px; padding-block: 4px; font-size: 0.875rem; }
+  .row-actions { white-space: nowrap; text-align: right; }
+  .role-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .role-card { display: grid; gap: 6px; justify-items: start; padding: 16px; border-radius: 12px; background: var(--surface); }
+  .matrix td, .matrix th { white-space: nowrap; }
+  @media (max-width: 900px) { .role-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>

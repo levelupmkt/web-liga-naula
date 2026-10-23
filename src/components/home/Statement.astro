@@ -1,0 +1,29 @@
+---
+import { Image } from 'astro:assets';
+import { statement } from '../../content/site';
+---
+<section class="statement" aria-label="Frase destacada">
+  <Image src={statement.photo.src} alt="" widths={[800, 1400, 2000]} sizes="100vw" class="statement__img" />
+  <div class="statement__shade" aria-hidden="true"></div>
+  <div class="container statement__inner" data-reveal>
+    <p class="statement__text">“{statement.text}”</p>
+    <p class="statement__caption">{statement.caption}</p>
+  </div>
+</section>
+
+<style>
+  .statement { position: relative; isolation: isolate; overflow: hidden; color: var(--white); min-height: clamp(420px, 70vh, 680px); display: flex; align-items: flex-end; }
+  .statement__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+  .statement__shade { position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(22 22 22 / 0.15) 0%, rgb(22 22 22 / 0.85) 75%); }
+  .statement__inner { padding-block: clamp(56px, 8vw, 96px); }
+  .statement__text {
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 6vw, 5rem);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+    text-wrap: balance;
+  }
+  .statement__caption { display: inline-flex; align-items: center; gap: 12px; margin-top: 24px; font-size: 1.0625rem; }
+  .statement__caption::before { content: ''; width: 36px; height: 3px; background: var(--orange); border-radius: 2px; }
+</style>

@@ -1,0 +1,161 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { sectores, FIELD_TYPE_LABEL } from '../../../content/admin-demo';
+
+const validSectors = sectores.map((s) => `${s.parroquia}|${s.barrio}`.toLowerCase());
+const sample = [
+  'fecha,parroquia,barrio,tipo,receptividad,nota,lat,lng',
+  '2026-10-20 09:15,Bellavista,Centro Bellavista,visita,4,Reunión con la directiva barrial,-3.5071,-79.8812',
+  '2026-10-20 10:02,Bellavista,La Florida,problema,3,Calle sin asfaltar frente a la escuela,-3.5102,-79.8790',
+  '2026-10-20 11:30,Bellavista,Barrio Inventado,apoyo,5,Vecinos ofrecen su casa,,',
+  '2026-10-21 08:45,Torata,Centro Torata,queja,7,Cortes de agua frecuentes,-3.6191,-79.9711',
+  '2026-10-21 09:20,Torata,Las Palmas,saludo,4,Conversación con comerciantes,-3.6170,-79.9702',
+  '2026-10-21 16:10,Santa Rosa (centro),Centro,apoyo,5,Grupo de jóvenes quiere sumarse,-3.4507,-79.9581',
+  '2026-10-22 10:40,La Avanzada,San Vicente,visita,4,Recorrido casa por casa,-3.4911,-79.9349',
+  ',La Avanzada,Centro La Avanzada,otro,3,Piden calendario de actividades,,',
+].join('\n');
+---
+<AdminLayout title="Importar reportes" roles={['admin', 'analista', 'campo']}>
+  <div class="page-head">
+    <div>
+      <a class="small muted back" href="/admin/campo"><Icon name="arrow-left" size={14} /> Reportes de campo</a>
+      <h1>Importar reportes</h1>
+      <p>Carga masiva desde CSV o Excel. Revisa los errores antes de guardar.</p>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li class="panel step">
+      <span class="step__n">1</span>
+      <div>
+        <h2 class="panel__title">Descarga la plantilla</h2>
+        <p class="small muted">Columnas: fecha, parroquia, barrio, tipo, receptividad (1–5), nota (máx. 500), lat, lng.</p>
+      </div>
+      <button class="abtn" type="button" data-template><Icon name="download" size={16} /> Plantilla CSV</button>
+    </li>
+    <li class="panel step">
+      <span class="step__n">2</span>
+      <div>
+        <h2 class="panel__title">Sube tu archivo</h2>
+        <p class="small muted">CSV separado por comas. (En la versión real también se acepta .xlsx).</p>
+      </div>
+      <div class="step__actions">
+        <label class="abtn"><input type="file" accept=".csv,text/csv" class="sr-only" data-file /><Icon name="upload" size={16} /> Elegir archivo</label>
+        <button class="abtn abtn--orange" type="button" data-sample>Usar archivo de ejemplo</button>
+      </div>
+    </li>
+  </ol>
+
+  <section class="panel preview" hidden data-preview>
+    <div class="panel__head">
+      <div>
+        <h2 class="panel__title">3. Vista previa</h2>
+        <p class="small muted" data-filename></p>
+      </div>
+      <div class="summary">
+        <span class="badge badge--activa" data-ok></span>
+        <span class="badge badge--err" data-bad></span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>#</th><th>Fecha</th><th>Parroquia / barrio</th><th>Tipo</th><th class="num">Recept.</th><th>Nota</th><th>Estado</th></tr></thead>
+        <tbody data-rows></tbody>
+      </table>
+    </div>
+    <div class="preview__foot">
+      <p class="small muted">Las filas con errores no se guardan. Corrígelas en tu archivo y vuelve a subirlo.</p>
+      <button class="abtn abtn--primary" type="button" data-save></button>
+    </div>
+  </section>
+
+  <script type="application/json" id="import-data" set:html={JSON.stringify({ validSectors, types: Object.keys(FIELD_TYPE_LABEL), labels: FIELD_TYPE_LABEL, sample })}></script>
+</AdminLayout>
+
+<script>
+  const D = JSON.parse(document.getElementById('import-data')!.textContent!);
+  const $ = <E extends Element>(s: string) => document.querySelector<E>(s)!;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const valid = new Set<string>(D.validSectors);
+
+  function download(text: string, name: string) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }));
+    a.download = name;
+    a.click();
+  }
+  $('[data-template]').addEventListener('click', () => download('fecha,parroquia,barrio,tipo,receptividad,nota,lat,lng\n', 'plantilla-reportes-campo.csv'));
+
+  function parseCSV(text: string) {
+    const rows: string[][] = [];
+    let row: string[] = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter((r) => r.some((c) => c.trim()));
+  }
+
+  let okCount = 0;
+  function preview(text: string, name: string) {
+    const [header, ...rows] = parseCSV(text.replace(/^﻿/, ''));
+    const idx = (k: string) => header.map((h) => h.trim().toLowerCase()).indexOf(k);
+    const col = { fecha: idx('fecha'), p: idx('parroquia'), b: idx('barrio'), tipo: idx('tipo'), rec: idx('receptividad'), nota: idx('nota') };
+    okCount = 0;
+    $('[data-rows]').innerHTML = rows.map((r, i) => {
+      const g = (k: keyof typeof col) => (col[k] >= 0 ? (r[col[k]] ?? '').trim() : '');
+      const errors: string[] = [];
+      if (!g('fecha')) errors.push('Falta la fecha');
+      if (!valid.has(`${g('p')}|${g('b')}`.toLowerCase())) errors.push('Barrio no existe en la tabla de sectores');
+      if (!D.types.includes(g('tipo').toLowerCase())) errors.push(`Tipo «${g('tipo')}» no válido`);
+      const rec = Number(g('rec'));
+      if (!Number.isInteger(rec) || rec < 1 || rec > 5) errors.push('Receptividad debe ser de 1 a 5');
+      if (g('nota').length > 500) errors.push('Nota de más de 500 caracteres');
+      if (!errors.length) okCount++;
+      return `<tr class="${errors.length ? 'row-bad' : ''}">
+        <td class="muted">${i + 2}</td><td class="small">${esc(g('fecha')) || '<span class="err">—</span>'}</td>
+        <td>${esc(g('b'))}<br><span class="small muted">${esc(g('p'))}</span></td>
+        <td>${esc(D.labels[g('tipo').toLowerCase()] ?? g('tipo'))}</td><td class="num">${esc(g('rec'))}</td>
+        <td class="small note">${esc(g('nota'))}</td>
+        <td>${errors.length ? `<ul class="errs">${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : '<span class="ok">✓ Válida</span>'}</td></tr>`;
+    }).join('');
+    $('[data-filename]').textContent = `${name} · ${rows.length} filas`;
+    $('[data-ok]').textContent = `${okCount} válidas`;
+    $('[data-bad]').textContent = `${rows.length - okCount} con errores`;
+    $('[data-save]').textContent = `Guardar ${okCount} filas válidas`;
+    $<HTMLElement>('[data-preview]').hidden = false;
+    $('[data-preview]').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  $('[data-sample]').addEventListener('click', () => preview(D.sample, 'ejemplo-reportes.csv'));
+  $<HTMLInputElement>('[data-file]').addEventListener('change', async (e) => {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (f) preview(await f.text(), f.name);
+  });
+  $('[data-save]').addEventListener('click', () => (window as any).demoToast(`Demo: se guardarían ${okCount} reportes`));
+</script>
+
+<style>
+  .back { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; margin-bottom: 6px; }
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; list-style: none; margin: 0 0 16px; padding: 0; }
+  .step { display: grid; grid-template-columns: auto 1fr; gap: 14px 16px; align-items: start; }
+  .step > .abtn, .step__actions { grid-column: 2; justify-self: start; }
+  .step__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .step__n { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--orange); font-family: var(--font-display); }
+  .step label.abtn:focus-within { outline: 3px solid var(--ink); }
+  .summary { display: flex; gap: 8px; }
+  :global(.badge--err) { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+  :global(.row-bad) { background: #fffafa; }
+  :global(.errs) { margin: 0; padding-left: 16px; color: #b91c1c; font-size: 0.8125rem; }
+  :global(.ok) { color: #15803d; font-size: 0.875rem; white-space: nowrap; }
+  :global(.err) { color: #b91c1c; }
+  :global(td.note) { max-width: 240px; }
+  .preview__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+  @media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+</style>

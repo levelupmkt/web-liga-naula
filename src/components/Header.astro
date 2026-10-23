@@ -1,16 +1,14 @@
 ---
-import { nav, news } from '../content/site';
+import { nav } from '../content/site';
 import Icon from './Icon.astro';
+import SocialLinks from './SocialLinks.astro';
 
-interface Props { home?: boolean }
-const { home = false } = Astro.props;
-// En páginas secundarias los anclajes apuntan a la portada.
-const href = (id: string) => (home ? `#${id}` : `/#${id}`);
-const social = news.socialLinks.filter((s) => s.verified);
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`));
 ---
 <header class="site-header" data-header>
   <div class="container bar">
-    <a class="brand" href={href('inicio')} aria-label="Ligia Naula — ir al inicio">
+    <a class="brand" href="/" aria-label="Ligia Naula — ir al inicio">
       <span class="brand__mark" aria-hidden="true">L</span>
       <span class="brand__name">Ligia Naula</span>
     </a>
@@ -18,18 +16,17 @@ const social = news.socialLinks.filter((s) => s.verified);
     <nav class="nav" aria-label="Principal">
       <ul>
         {nav.map((item) => (
-          <li><a href={href(item.id)} data-nav={item.id}>{item.label}</a></li>
+          <li><a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>{item.label}</a></li>
         ))}
       </ul>
     </nav>
 
-    {social.length > 0 && (
-      <ul class="social" aria-label="Redes sociales">
-        {social.map((s) => (
-          <li><a href={s.url} target="_blank" rel="noopener noreferrer">{s.platform}</a></li>
-        ))}
-      </ul>
-    )}
+    <SocialLinks class="header-social" />
+
+    <a class="team-btn" href="/admin/login" aria-label="Acceso equipo: panel de campaña" title="Acceso equipo">
+      <Icon name="lock" size={16} />
+      <span class="team-btn__text">Acceso equipo</span>
+    </a>
 
     <button class="menu-btn" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-open>
       <Icon name="menu" size={22} />
@@ -50,14 +47,21 @@ const social = news.socialLinks.filter((s) => s.verified);
     <ol>
       {nav.map((item, i) => (
         <li style={`--i:${i}`}>
-          <a href={href(item.id)} data-nav={item.id}>
+          <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
             <span class="num">{String(i + 1).padStart(2, '0')}</span>{item.label}
           </a>
         </li>
       ))}
     </ol>
   </nav>
-  <p class="container mobile-nav__foot">Santa Rosa · El Oro · Ecuador</p>
+  <div class="container mobile-nav__foot">
+    <a class="team-btn team-btn--block" href="/admin/login">
+      <Icon name="lock" size={16} />
+      <span>Acceso equipo · panel de campaña</span>
+    </a>
+    <SocialLinks />
+    <p>Santa Rosa · El Oro · Ecuador</p>
+  </div>
 </div>
 
 <style>
@@ -122,7 +126,7 @@ const social = news.socialLinks.filter((s) => s.verified);
     transition: color 150ms var(--ease), background-color 150ms var(--ease);
   }
   .nav a:hover { color: var(--ink); background: var(--surface); }
-  .nav a[aria-current='true'] { color: var(--ink); }
+  .nav a[aria-current='page'] { color: var(--ink); }
   .nav a::after {
     content: '';
     position: absolute;
@@ -134,9 +138,36 @@ const social = news.socialLinks.filter((s) => s.verified);
     transform-origin: left;
     transition: transform 250ms var(--ease);
   }
-  .nav a[aria-current='true']::after { transform: scaleX(1); }
+  .nav a[aria-current='page']::after { transform: scaleX(1); }
 
-  .social { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
+  :global(.header-social) { margin-left: 8px; }
+  :global(.header-social a) { width: 36px !important; height: 36px !important; border-color: var(--line) !important; }
+  @media (max-width: 1180px) { :global(.header-social) { display: none !important; } }
+  .team-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 0.875rem;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 150ms var(--ease), color 150ms var(--ease), transform 150ms var(--ease);
+  }
+  .team-btn:hover { background: var(--orange); color: var(--ink); }
+  .team-btn:active { transform: scale(0.97); }
+  .team-btn--block { width: 100%; min-height: 48px; font-size: 0.9375rem; letter-spacing: 0; text-transform: none; }
+  .team-btn--block:hover { background: var(--white); }
+  @media (max-width: 1279px) {
+    .bar > .team-btn { padding: 0; width: 40px; }
+    .bar > .team-btn .team-btn__text { display: none; }
+  }
+  .mobile-nav__foot :global(.social a:hover) { background: var(--ink); border-color: var(--ink); color: var(--orange); }
 
   .menu-btn {
     display: none;
@@ -153,7 +184,7 @@ const social = news.socialLinks.filter((s) => s.verified);
   .menu-btn:active { transform: scale(0.94); }
 
   @media (max-width: 1023px) {
-    .nav, .social { display: none; }
+    .nav { display: none; }
     .menu-btn { display: grid; }
   }
 
@@ -197,8 +228,8 @@ const social = news.socialLinks.filter((s) => s.verified);
     transform: scale(0);
     transition: transform 200ms var(--ease);
   }
-  .mobile-nav ol a[aria-current='true']::after { transform: scale(1); }
-  .mobile-nav__foot { margin-top: auto; padding-block: 28px; font-size: 0.875rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .mobile-nav ol a[aria-current='page']::after { transform: scale(1); }
+  .mobile-nav__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-top: auto; padding-block: 28px; font-size: 0.875rem; letter-spacing: 0.1em; text-transform: uppercase; }
 
   @media (prefers-reduced-motion: no-preference) {
     .mobile-nav.is-open { animation: navIn 300ms var(--ease); }
@@ -254,23 +285,4 @@ const social = news.socialLinks.filter((s) => s.verified);
   window.matchMedia('(min-width: 1024px)').addEventListener('change', (m) => {
     if (m.matches && !panel.hidden) closeMenu(false);
   });
-
-  // Sección activa en el menú
-  const links = document.querySelectorAll<HTMLAnchorElement>('[data-nav]');
-  const sections = Array.from(links)
-    .map((l) => document.getElementById(l.dataset.nav!))
-    .filter((s, i, arr): s is HTMLElement => !!s && arr.indexOf(s) === i);
-
-  if (sections.length) {
-    const setActive = (id: string) =>
-      links.forEach((l) => l.setAttribute('aria-current', String(l.dataset.nav === id)));
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length) setActive((visible[0].target as HTMLElement).id);
-      },
-      { rootMargin: '-45% 0px -50% 0px' },
-    );
-    sections.forEach((s) => io.observe(s));
-  }
 </script>

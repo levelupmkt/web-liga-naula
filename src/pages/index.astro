@@ -1,19 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
-import IntroCards from '../components/IntroCards.astro';
-import About from '../components/About.astro';
-import Records from '../components/Records.astro';
-import GovernmentPlan from '../components/GovernmentPlan.astro';
-import News from '../components/News.astro';
-import Contact from '../components/Contact.astro';
+import HomeAbout from '../components/home/HomeAbout.astro';
+import Statement from '../components/home/Statement.astro';
+import HomeTrajectory from '../components/home/HomeTrajectory.astro';
+import HomePlan from '../components/home/HomePlan.astro';
+import HomeNews from '../components/home/HomeNews.astro';
+import HomeContact from '../components/home/HomeContact.astro';
 ---
-<BaseLayout home>
+<BaseLayout>
   <Hero />
-  <IntroCards />
-  <About />
-  <Records />
-  <GovernmentPlan />
-  <News />
-  <Contact />
+  <HomeAbout />
+  <Statement />
+  <HomeTrajectory />
+  <HomePlan />
+  <HomeNews />
+  <HomeContact />
 </BaseLayout>

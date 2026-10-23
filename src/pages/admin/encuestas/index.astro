@@ -1,0 +1,113 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { surveys, surveyResults, STATUS_LABEL, formatNum, formatShortDate, type SurveyStatus } from '../../../content/admin-demo';
+
+const statuses: SurveyStatus[] = ['activa', 'pausada', 'cerrada', 'borrador'];
+const count = (s: SurveyStatus) => surveys.filter((x) => x.estado === s).length;
+---
+<AdminLayout title="Encuestas" roles={['admin', 'analista', 'lector']}>
+  <div class="page-head">
+    <div>
+      <h1>Encuestas</h1>
+      <p>Crea encuestas, compártelas por enlace o QR y revisa sus resultados.</p>
+    </div>
+    <div class="page-head__actions">
+      <a class="abtn abtn--orange" href="/admin/encuestas/nueva" data-roles="admin,analista"><Icon name="plus" size={18} /> Nueva encuesta</a>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="toolbar">
+      <div class="tabs" role="group" aria-label="Filtrar por estado">
+        <button type="button" aria-pressed="true" data-status="">Todas<span class="count">{surveys.length}</span></button>
+        {statuses.map((s) => <button type="button" aria-pressed="false" data-status={s}>{STATUS_LABEL[s]}<span class="count">{count(s)}</span></button>)}
+      </div>
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <span class="sr-only">Buscar encuesta</span>
+        <input class="ainput" type="search" placeholder="Buscar por título" data-search />
+      </label>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>Encuesta</th><th>Estado</th><th class="num">Participaciones</th><th>Periodo</th><th>Actualizada</th><th><span class="sr-only">Acciones</span></th></tr>
+        </thead>
+        <tbody data-rows>
+          {surveys.map((s) => {
+            const r = surveyResults(s);
+            return (
+              <tr data-row data-estado={s.estado} data-title={s.titulo.toLowerCase()}>
+                <td>
+                  <a class="s-title" href={`/admin/encuestas/${s.id}`}>{s.titulo}</a>
+                  <span class="small muted s-slug">/e/{s.slug} · {s.preguntas.length} preguntas{s.conPassword && ' · con contraseña'}</span>
+                </td>
+                <td><span class={`badge badge--${s.estado}`}>{STATUS_LABEL[s.estado]}</span></td>
+                <td class="num">{s.estado === 'borrador' ? <span class="muted">—</span> : formatNum(r.total)}</td>
+                <td class="small">{formatShortDate(s.abre)} – {formatShortDate(s.cierra)}</td>
+                <td class="small muted">{formatShortDate(s.actualizada)}<br />{s.creadaPor}</td>
+                <td>
+                  <div class="row-actions">
+                    <a class="abtn abtn--icon abtn--ghost" href={`/admin/encuestas/${s.id}`} title="Ver resultados"><Icon name="chart" size={18} /><span class="sr-only">Ver resultados</span></a>
+                    <button class="abtn abtn--icon abtn--ghost" type="button" title="Copiar enlace" data-copy={`/e/${s.slug}`}><Icon name="copy" size={18} /><span class="sr-only">Copiar enlace</span></button>
+                    <button class="abtn abtn--icon abtn--ghost" type="button" title="Duplicar" data-roles="admin,analista" data-demo={`Demo: se crearía una copia de «${s.titulo}» como borrador`}><Icon name="layers" size={18} /><span class="sr-only">Duplicar</span></button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    <p class="empty muted" hidden data-empty>No hay encuestas que coincidan con el filtro.</p>
+  </section>
+</AdminLayout>
+
+<script>
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-row]'));
+  const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-status]'));
+  const search = document.querySelector<HTMLInputElement>('[data-search]')!;
+  const empty = document.querySelector<HTMLElement>('[data-empty]')!;
+  let status = '';
+
+  function apply() {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    rows.forEach((r) => {
+      const ok = (!status || r.dataset.estado === status) && (!q || r.dataset.title!.includes(q));
+      r.hidden = !ok;
+      if (ok) shown++;
+    });
+    empty.hidden = shown > 0;
+  }
+  tabs.forEach((t) =>
+    t.addEventListener('click', () => {
+      status = t.dataset.status!;
+      tabs.forEach((x) => x.setAttribute('aria-pressed', String(x === t)));
+      apply();
+    }),
+  );
+  search.addEventListener('input', apply);
+
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const url = location.origin + b.dataset.copy;
+      try { await navigator.clipboard.writeText(url); } catch {}
+      (window as any).demoToast(`Enlace copiado: ${url}`);
+    }),
+  );
+</script>
+
+<style>
+  .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .toolbar__search { position: relative; display: flex; align-items: center; width: min(280px, 100%); }
+  .toolbar__search :global(svg) { position: absolute; left: 12px; color: var(--ink-soft); }
+  .toolbar__search .ainput { padding-left: 36px; }
+  .s-title { display: block; font-weight: 600; text-decoration: none; }
+  .s-title:hover { color: var(--orange-ink); text-decoration: underline; }
+  .s-slug { display: block; margin-top: 2px; }
+  .row-actions { display: flex; justify-content: flex-end; gap: 2px; }
+  .empty { padding: 32px; text-align: center; }
+</style>

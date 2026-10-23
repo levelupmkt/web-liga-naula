@@ -1,0 +1,281 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { Q_TYPE_LABEL } from '../../../content/admin-demo';
+---
+<AdminLayout title="Nueva encuesta" roles={['admin', 'analista']}>
+  <div class="page-head">
+    <div>
+      <a class="small muted back" href="/admin/encuestas"><Icon name="arrow-left" size={14} /> Encuestas</a>
+      <h1>Nueva encuesta</h1>
+      <p>Los cambios se ven al instante en la vista previa del móvil.</p>
+    </div>
+    <div class="page-head__actions">
+      <button class="abtn" type="button" data-demo="Demo: la encuesta se guardaría como borrador">Guardar borrador</button>
+      <button class="abtn abtn--orange" type="button" data-publish><Icon name="play" size={16} /> Publicar</button>
+    </div>
+  </div>
+
+  <div class="builder">
+    <div class="builder__form">
+      <section class="panel">
+        <h2 class="panel__title">Datos generales</h2>
+        <div class="fields">
+          <div class="afield">
+            <label for="b-title">Título</label>
+            <input class="ainput" id="b-title" value="Prioridades de tu barrio" data-bind="title" />
+          </div>
+          <div class="afield">
+            <label for="b-desc">Descripción</label>
+            <textarea class="atextarea" id="b-desc" rows="2" data-bind="desc">Cuéntanos qué es lo más urgente en tu barrio para construir juntos las propuestas.</textarea>
+          </div>
+          <div class="afield">
+            <span class="afield__label">Imagen de portada</span>
+            <button class="drop" type="button" data-demo="Demo: aquí se subiría la imagen (también se usa al compartir en WhatsApp y Facebook)">
+              <Icon name="image" size={22} />
+              <span>Arrastra una imagen o <u>selecciónala</u></span>
+              <small class="muted">JPG o PNG · se usa en la vista previa al compartir</small>
+            </button>
+          </div>
+          <div class="two">
+            <div class="afield">
+              <label for="b-open">Abre</label>
+              <input class="ainput" id="b-open" type="datetime-local" value="2026-10-24T08:00" />
+            </div>
+            <div class="afield">
+              <label for="b-close">Cierra</label>
+              <input class="ainput" id="b-close" type="datetime-local" value="2026-11-15T20:00" />
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-pass-toggle />
+            <span class="switch__track"></span>
+            <span>Proteger con contraseña</span>
+          </label>
+          <div class="afield" hidden data-pass>
+            <label for="b-pass">Contraseña de acceso</label>
+            <input class="ainput" id="b-pass" type="text" value="barrio2026" />
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Preguntas</h2>
+          <span class="small muted" data-qcount></span>
+        </div>
+        <ol class="qlist" data-qlist></ol>
+        <div class="add">
+          <span class="small muted">Agregar pregunta:</span>
+          {Object.entries(Q_TYPE_LABEL).map(([k, v]) => (
+            <button class="abtn abtn--sm" type="button" data-add={k}><Icon name="plus" size={14} /> {v}</button>
+          ))}
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel__title">Al terminar</h2>
+        <div class="fields">
+          <div class="afield">
+            <label for="b-thanks">Mensaje de agradecimiento</label>
+            <textarea class="atextarea" id="b-thanks" rows="2" data-bind="thanks">¡Gracias! Tu respuesta nos ayuda a conocer mejor las necesidades de Santa Rosa.</textarea>
+          </div>
+          <div class="afield">
+            <label for="b-redirect">Redirigir a (opcional)</label>
+            <input class="ainput" id="b-redirect" type="url" placeholder="https://…" value="https://www.instagram.com/ligia_naula/" />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="builder__preview" aria-label="Vista previa en móvil">
+      <div class="phone">
+        <div class="phone__notch" aria-hidden="true"></div>
+        <div class="phone__screen">
+          <div class="pv-top"><span class="pv-mark">L</span> Ligia Naula</div>
+          <div class="pv-body">
+            <h3 class="pv-title" data-pv="title"></h3>
+            <p class="pv-desc" data-pv="desc"></p>
+            <div class="pv-questions" data-pv-questions></div>
+            <div class="pv-thanks"><Icon name="heart" size={16} /> <span data-pv="thanks"></span></div>
+          </div>
+        </div>
+      </div>
+      <p class="small muted center">Vista previa · así la verá el ciudadano</p>
+    </aside>
+  </div>
+</AdminLayout>
+
+<script>
+  type QType = 'unica' | 'multiple' | 'escala' | 'sino' | 'texto';
+  type Q = { id: number; tipo: QType; enunciado: string; opciones: string[]; obligatoria: boolean };
+  const LABEL: Record<QType, string> = { unica: 'Opción única', multiple: 'Opción múltiple', escala: 'Escala 1–5', sino: 'Sí / No', texto: 'Texto abierto' };
+  const hasOptions = (t: QType) => t === 'unica' || t === 'multiple';
+
+  let nextId = 1;
+  const make = (tipo: QType, enunciado = '', opciones: string[] = []): Q => ({
+    id: nextId++, tipo, enunciado, opciones: hasOptions(tipo) && !opciones.length ? ['Opción 1', 'Opción 2'] : opciones, obligatoria: tipo !== 'texto',
+  });
+  let qs: Q[] = [
+    make('unica', '¿Cuál es el principal problema de tu barrio?', ['Agua potable', 'Vías y calles', 'Seguridad', 'Empleo', 'Alumbrado público']),
+    make('escala', '¿Cómo calificas el estado de las calles de tu sector?'),
+    make('texto', '¿Qué obra le pedirías a la próxima administración?'),
+  ];
+
+  const list = document.querySelector<HTMLElement>('[data-qlist]')!;
+  const pvQs = document.querySelector<HTMLElement>('[data-pv-questions]')!;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  function render() {
+    document.querySelector('[data-qcount]')!.textContent = `${qs.length} ${qs.length === 1 ? 'pregunta' : 'preguntas'}`;
+    list.innerHTML = qs.map((q, i) => `
+      <li class="q" data-id="${q.id}">
+        <div class="q__head">
+          <span class="q__num">${i + 1}</span>
+          <select class="aselect q__type" data-f="tipo" aria-label="Tipo de pregunta">
+            ${Object.entries(LABEL).map(([k, v]) => `<option value="${k}" ${k === q.tipo ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+          <div class="q__tools">
+            <button type="button" class="abtn abtn--icon abtn--ghost" data-act="up" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
+            <button type="button" class="abtn abtn--icon abtn--ghost" data-act="down" ${i === qs.length - 1 ? 'disabled' : ''} aria-label="Bajar">▼</button>
+            <button type="button" class="abtn abtn--icon abtn--ghost abtn--danger" data-act="del" aria-label="Eliminar pregunta">✕</button>
+          </div>
+        </div>
+        <input class="ainput" data-f="enunciado" value="${esc(q.enunciado)}" placeholder="Escribe la pregunta" aria-label="Enunciado" />
+        ${hasOptions(q.tipo) ? `
+          <ul class="opts">
+            ${q.opciones.map((o, k) => `
+              <li><span class="opt-mark ${q.tipo === 'multiple' ? 'opt-mark--sq' : ''}"></span>
+                <input class="ainput" data-opt="${k}" value="${esc(o)}" aria-label="Opción ${k + 1}" />
+                <button type="button" class="abtn abtn--icon abtn--ghost" data-delopt="${k}" aria-label="Quitar opción" ${q.opciones.length <= 2 ? 'disabled' : ''}>✕</button>
+              </li>`).join('')}
+          </ul>
+          <button type="button" class="abtn abtn--sm abtn--ghost" data-act="addopt">+ Agregar opción</button>` : ''}
+        <label class="switch small"><input type="checkbox" data-f="obligatoria" ${q.obligatoria ? 'checked' : ''} /><span class="switch__track"></span><span>Obligatoria</span></label>
+      </li>`).join('');
+    renderPreview();
+  }
+
+  function renderPreview() {
+    pvQs.innerHTML = qs.map((q, i) => {
+      let body = '';
+      if (hasOptions(q.tipo)) body = q.opciones.map((o) => `<span class="pv-opt ${q.tipo === 'multiple' ? 'pv-opt--sq' : ''}">${esc(o)}</span>`).join('');
+      if (q.tipo === 'escala') body = `<span class="pv-scale">${[1, 2, 3, 4, 5].map((n) => `<span>${n}</span>`).join('')}</span>`;
+      if (q.tipo === 'sino') body = `<span class="pv-scale pv-scale--2"><span>Sí</span><span>No</span></span>`;
+      if (q.tipo === 'texto') body = `<span class="pv-text">Escribe tu respuesta…</span>`;
+      return `<div class="pv-q"><p class="pv-qt">${i + 1}. ${esc(q.enunciado || 'Pregunta sin título')}${q.obligatoria ? ' <b>*</b>' : ''}</p>${body}</div>`;
+    }).join('');
+  }
+
+  list.addEventListener('input', (e) => {
+    const t = e.target as HTMLInputElement;
+    const q = qs.find((x) => x.id === Number(t.closest<HTMLElement>('.q')!.dataset.id))!;
+    if (t.dataset.f === 'enunciado') q.enunciado = t.value;
+    if (t.dataset.opt) q.opciones[Number(t.dataset.opt)] = t.value;
+    renderPreview();
+  });
+  list.addEventListener('change', (e) => {
+    const t = e.target as HTMLInputElement;
+    const q = qs.find((x) => x.id === Number(t.closest<HTMLElement>('.q')!.dataset.id))!;
+    if (t.dataset.f === 'tipo') {
+      q.tipo = t.value as QType;
+      if (hasOptions(q.tipo) && q.opciones.length < 2) q.opciones = ['Opción 1', 'Opción 2'];
+      render();
+    }
+    if (t.dataset.f === 'obligatoria') { q.obligatoria = t.checked; renderPreview(); }
+  });
+  list.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
+    if (!b) return;
+    const li = b.closest<HTMLElement>('.q')!;
+    const i = qs.findIndex((x) => x.id === Number(li.dataset.id));
+    const q = qs[i];
+    if (b.dataset.act === 'up') [qs[i - 1], qs[i]] = [qs[i], qs[i - 1]];
+    else if (b.dataset.act === 'down') [qs[i + 1], qs[i]] = [qs[i], qs[i + 1]];
+    else if (b.dataset.act === 'del') qs.splice(i, 1);
+    else if (b.dataset.act === 'addopt') q.opciones.push(`Opción ${q.opciones.length + 1}`);
+    else if (b.dataset.delopt) q.opciones.splice(Number(b.dataset.delopt), 1);
+    else return;
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((b) =>
+    b.addEventListener('click', () => {
+      qs.push(make(b.dataset.add as QType));
+      render();
+      list.querySelector<HTMLInputElement>('.q:last-child [data-f="enunciado"]')?.focus();
+    }),
+  );
+
+  // Campos generales → vista previa
+  document.querySelectorAll<HTMLInputElement>('[data-bind]').forEach((el) => {
+    const out = document.querySelector(`[data-pv="${el.dataset.bind}"]`)!;
+    const sync = () => (out.textContent = el.value);
+    el.addEventListener('input', sync);
+    sync();
+  });
+  const passToggle = document.querySelector<HTMLInputElement>('[data-pass-toggle]')!;
+  passToggle.addEventListener('change', () => (document.querySelector<HTMLElement>('[data-pass]')!.hidden = !passToggle.checked));
+
+  document.querySelector('[data-publish]')!.addEventListener('click', () => {
+    const empty = qs.some((q) => !q.enunciado.trim());
+    if (!qs.length || empty) {
+      (window as any).demoToast('Revisa: todas las preguntas necesitan un enunciado.');
+      return;
+    }
+    (window as any).demoToast('Demo: encuesta publicada. Enlace: /e/prioridades-barrio');
+  });
+
+  render();
+</script>
+
+<style>
+  .back { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; margin-bottom: 6px; }
+  .builder { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  .builder__form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .fields { display: grid; gap: 16px; margin-top: 16px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .drop { display: grid; justify-items: center; gap: 6px; padding: 24px; border: 2px dashed #cfcfcf; border-radius: 12px; background: #fafafa; color: var(--ink-soft); font-size: 0.9375rem; cursor: pointer; }
+  .drop:hover { border-color: var(--orange); color: var(--ink); }
+
+  .qlist { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+  :global(.q) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fcfcfc; }
+  :global(.q__head) { display: flex; align-items: center; gap: 10px; }
+  :global(.q__num) { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--ink); color: var(--white); font-size: 0.875rem; flex-shrink: 0; }
+  :global(.q__type) { width: auto; min-width: 170px; }
+  :global(.q__tools) { display: flex; gap: 2px; margin-left: auto; }
+  :global(.q__tools .abtn) { font-size: 0.75rem; }
+  :global(.opts) { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+  :global(.opts li) { display: flex; align-items: center; gap: 10px; }
+  :global(.opt-mark) { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #b5b5b5; flex-shrink: 0; }
+  :global(.opt-mark--sq) { border-radius: 4px; }
+  .add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+  .builder__preview { position: sticky; top: 118px; display: grid; gap: 10px; }
+  .center { text-align: center; }
+  .phone { position: relative; padding: 12px; border-radius: 40px; background: var(--ink); box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.5); }
+  .phone__notch { position: absolute; top: 12px; left: 50%; width: 110px; height: 22px; border-radius: 0 0 14px 14px; background: var(--ink); transform: translateX(-50%); z-index: 1; }
+  .phone__screen { height: 600px; overflow-y: auto; border-radius: 30px; background: var(--surface); scrollbar-width: none; }
+  .pv-top { display: flex; align-items: center; gap: 8px; padding: 32px 18px 14px; background: var(--orange); font-family: var(--font-display); font-size: 0.9375rem; }
+  .pv-mark { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: var(--ink); color: var(--orange); font-size: 0.8125rem; }
+  .pv-body { display: grid; gap: 12px; padding: 16px; }
+  .pv-title { font-size: 1.375rem; line-height: 1.05; }
+  .pv-desc { font-size: 0.8125rem; color: var(--ink-soft); }
+  .pv-questions { display: grid; gap: 10px; }
+  :global(.pv-q) { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: var(--white); }
+  :global(.pv-qt) { font-size: 0.8125rem; font-weight: 600; }
+  :global(.pv-qt b) { color: var(--orange-ink); }
+  :global(.pv-opt) { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 0.75rem; }
+  :global(.pv-opt::before) { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #b5b5b5; }
+  :global(.pv-opt--sq::before) { border-radius: 3px; }
+  :global(.pv-scale) { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  :global(.pv-scale--2) { grid-template-columns: 1fr 1fr; }
+  :global(.pv-scale span) { padding: 7px 0; border-radius: 8px; border: 1px solid var(--line); text-align: center; font-size: 0.75rem; }
+  :global(.pv-text) { padding: 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 0.75rem; color: #9a9a9a; }
+  .pv-thanks { display: flex; gap: 8px; padding: 12px; border-radius: 12px; background: var(--orange-soft); font-size: 0.75rem; color: var(--orange-ink); }
+
+  @media (max-width: 1100px) {
+    .builder { grid-template-columns: minmax(0, 1fr); }
+    .builder__preview { position: static; max-width: 340px; margin-inline: auto; }
+  }
+  @media (max-width: 560px) { .two { grid-template-columns: minmax(0, 1fr); } :global(.q__type) { min-width: 0; flex: 1; } }
+</style>

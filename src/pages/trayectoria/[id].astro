@@ -1,0 +1,105 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import SourceLink from '../../components/SourceLink.astro';
+import Icon from '../../components/Icon.astro';
+import { publishedRecords, formatDate, type RecordItem } from '../../content/site';
+
+export function getStaticPaths() {
+  return publishedRecords.map((record) => ({ params: { id: record.id }, props: { record } }));
+}
+
+interface Props { record: RecordItem }
+const { record: r } = Astro.props;
+const others = publishedRecords.filter((x) => x.id !== r.id).slice(0, 3);
+---
+<BaseLayout title={`${r.title} · Ligia Naula`} description={r.summary}>
+  <PageHero kicker={r.category} title={r.title} crumbs={[{ label: 'Trayectoria', href: '/trayectoria' }]}>
+    <p class="meta"><Icon name="calendar" size={16} /> <time datetime={r.date}>{formatDate(r.date)}</time> · {r.label}</p>
+  </PageHero>
+
+  <article class="section record">
+    <div class="container record__grid">
+      <div class="record__main">
+        {r.image && (
+          <Image src={r.image.src} alt={r.image.alt} widths={[600, 1000, 1400]} sizes="(min-width: 1024px) 60vw, 100vw" class="record__img" />
+        )}
+        <p class="record__lead">{r.summary}</p>
+        {r.body?.map((p) => <p>{p}</p>)}
+        {r.attributionNote && (
+          <p class="record__note"><Icon name="info" size={18} /> {r.attributionNote}</p>
+        )}
+        {r.related && (
+          <a class="btn" href={r.related.href}>{r.related.label} <Icon name="arrow-right" size={18} /></a>
+        )}
+      </div>
+
+      <aside class="record__side" aria-label="Datos de la ficha">
+        <dl>
+          <dt>Fecha</dt><dd><time datetime={r.date}>{formatDate(r.date)}</time></dd>
+          <dt>Categoría</dt><dd>{r.category}</dd>
+          {r.roleAtTime && <><dt>Cargo en ese momento</dt><dd>{r.roleAtTime}</dd></>}
+          <dt>Tipo de registro</dt><dd>{r.label}</dd>
+          <dt>Actualizado</dt><dd><time datetime={r.updatedAt}>{formatDate(r.updatedAt)}</time></dd>
+        </dl>
+        {r.sources.length > 0 && (
+          <div class="record__sources">
+            <h2>Fuentes</h2>
+            <ul>{r.sources.map((s) => <li><SourceLink source={s} /></li>)}</ul>
+          </div>
+        )}
+        <a class="link" href="/trayectoria"><Icon name="arrow-left" size={16} /> Volver a la trayectoria</a>
+      </aside>
+    </div>
+  </article>
+
+  {others.length > 0 && (
+    <section class="others" aria-labelledby="others-title">
+      <div class="container">
+        <h2 id="others-title" class="others__title">Otras fichas</h2>
+        <ul class="others__list">
+          {others.map((o) => (
+            <li>
+              <a href={`/trayectoria/${o.id}`}>
+                <span class="tag">{o.category}</span>
+                <strong>{o.title}</strong>
+                <span class="others__date">{formatDate(o.date)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  .meta { display: inline-flex; align-items: center; gap: 8px; margin-top: 24px; padding: 8px 14px; border-radius: 999px; background: rgb(255 255 255 / 0.9); font-size: 0.875rem; }
+  .record__grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  .record__main { display: grid; gap: 20px; justify-items: start; font-size: 1.0625rem; max-width: 68ch; }
+  .record__img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: 50% 30%; border-radius: var(--radius); }
+  .record__lead { font-size: 1.25rem; }
+  .record__note { display: flex; gap: 10px; padding: 16px 18px; border-radius: var(--radius-sm); background: var(--surface); color: var(--ink-soft); font-size: 0.9375rem; }
+  .record__note :global(svg) { flex-shrink: 0; margin-top: 3px; color: var(--orange-ink); }
+  .record__side { position: sticky; top: 96px; display: grid; gap: 24px; padding: 28px; border-radius: var(--radius); background: var(--surface); }
+  .record__side dl { display: grid; gap: 4px; margin: 0; }
+  .record__side dt { font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-top: 10px; }
+  .record__side dd { margin: 0; }
+  .record__sources h2 { font-family: var(--font-body); font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .record__sources ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; font-size: 0.9375rem; }
+
+  .others { padding-bottom: clamp(64px, 8vw, 104px); }
+  .others__title { font-size: clamp(1.75rem, 3vw, 2.25rem); text-transform: uppercase; margin-bottom: 24px; }
+  .others__list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; margin: 0; padding: 0; }
+  .others__list a { display: grid; gap: 10px; justify-items: start; height: 100%; padding: 22px; border-radius: var(--radius); border: 1px solid var(--line); text-decoration: none; transition: transform 200ms var(--ease), box-shadow 200ms var(--ease); }
+  .others__list a:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .others__list strong { font-family: var(--font-display); font-weight: 500; font-size: 1.25rem; line-height: 1.12; }
+  .others__date { font-size: 0.875rem; color: var(--ink-soft); }
+
+  @media (max-width: 1023px) {
+    .record__grid { grid-template-columns: 1fr; }
+    .record__side { position: static; }
+    .others__list { grid-template-columns: 1fr; }
+  }
+</style>

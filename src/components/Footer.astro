@@ -1,21 +1,23 @@
 ---
 import { footer, nav } from '../content/site';
+import SocialLinks from './SocialLinks.astro';
 
-interface Props { home?: boolean }
-const { home = false } = Astro.props;
-const href = (id: string) => (home ? `#${id}` : `/#${id}`);
 const year = new Date().getFullYear();
 ---
 <footer class="footer">
   <div class="container">
     <div class="footer__top">
-      <div>
-        <a class="footer__brand" href={href('inicio')}>{footer.brand}</a>
+      <div class="footer__about">
+        <a class="footer__brand" href="/">{footer.brand}</a>
         <p class="footer__text">{footer.text}</p>
+        <div class="footer__social">
+          <p class="footer__label">Síguela en redes</p>
+          <SocialLinks />
+        </div>
       </div>
       <nav aria-label="Pie de página">
         <ul class="footer__nav">
-          {nav.map((item) => <li><a href={href(item.id)}>{item.label}</a></li>)}
+          {nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
         </ul>
       </nav>
     </div>
@@ -43,6 +45,8 @@ const year = new Date().getFullYear();
   .footer__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 40px; }
   .footer__brand { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 2.75rem); text-decoration: none; }
   .footer__text { margin-top: 10px; color: #bdbdbd; max-width: 36ch; }
+  .footer__social { margin-top: 28px; }
+  .footer__label { margin-bottom: 12px; font-size: 0.8125rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--orange); }
   .footer__nav { display: grid; grid-template-columns: repeat(2, auto); gap: 10px 48px; list-style: none; margin: 0; padding: 0; }
   .footer a { transition: color 150ms var(--ease); }
   .footer__nav a, .footer__legal a { color: #e6e6e6; text-decoration: none; }

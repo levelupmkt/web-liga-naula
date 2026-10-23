@@ -1,0 +1,50 @@
+---
+// "Sigue explorando": enlaces a las demás páginas, al final de cada página interna.
+import { Image } from 'astro:assets';
+import { photos } from '../content/site';
+import Icon from './Icon.astro';
+
+interface Props { current: string }
+const { current } = Astro.props;
+const pages = [
+  { href: '/conoce-a-ligia', label: 'Conoce a Ligia', photo: photos.portrait },
+  { href: '/trayectoria', label: 'Trayectoria', photo: photos.group },
+  { href: '/plan-de-gobierno', label: 'Plan de gobierno', photo: photos.youth },
+  { href: '/actualidad', label: 'Actualidad', photo: photos.kittens },
+  { href: '/contacto', label: 'Contacto', photo: photos.hug },
+].filter((p) => p.href !== current).slice(0, 3);
+---
+<section class="next" aria-labelledby="next-title">
+  <div class="container">
+    <h2 id="next-title" class="next__title" data-reveal>Sigue explorando</h2>
+  </div>
+  <ul class="next__tiles">
+    {pages.map((p, i) => (
+      <li data-reveal style={`--delay:${i * 80}ms`}>
+        <a class="tile" href={p.href}>
+          <Image src={p.photo.src} alt="" widths={[480, 800]} sizes="(min-width: 768px) 34vw, 100vw" class="tile__img" />
+          <span class="tile__shade" aria-hidden="true"></span>
+          <span class="tile__label">
+            {p.label}
+            <span class="tile__arrow"><Icon name="arrow-up-right" size={22} /></span>
+          </span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .next { padding-top: clamp(64px, 8vw, 104px); }
+  .next__title { font-size: clamp(2rem, 4vw, 3rem); text-transform: uppercase; margin-bottom: 32px; }
+  .next__tiles { display: grid; grid-template-columns: repeat(3, 1fr); list-style: none; margin: 0; padding: 0; }
+  .tile { position: relative; display: block; aspect-ratio: 4 / 3.4; overflow: hidden; color: var(--white); text-decoration: none; isolation: isolate; }
+  .tile__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; filter: grayscale(0.35); transition: transform 600ms var(--ease), filter 400ms var(--ease); }
+  .tile__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(0 0 0 / 0.05) 30%, rgb(0 0 0 / 0.75) 100%); }
+  .tile:hover .tile__img, .tile:focus-visible .tile__img { transform: scale(1.05); filter: grayscale(0); }
+  .tile__label { position: absolute; left: 24px; right: 24px; bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--font-display); font-size: clamp(1.5rem, 2.6vw, 2.25rem); line-height: 1; text-transform: uppercase; }
+  .tile__arrow { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; background: var(--orange); color: var(--ink); transition: transform 300ms var(--ease), background-color 300ms var(--ease); }
+  .tile:hover .tile__arrow { transform: rotate(45deg); background: var(--white); }
+  .tile:focus-visible { outline-offset: -6px; outline-color: var(--white); }
+  @media (max-width: 767px) { .next__tiles { grid-template-columns: 1fr; } .tile { aspect-ratio: 16 / 9; } }
+</style>

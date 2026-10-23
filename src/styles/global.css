@@ -101,9 +101,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--white);
   border-radius: 999px;
   text-decoration: none;
-  transform: translateY(-160%);
+  transform: translateY(calc(-100% - 24px));
   transition: transform 200ms var(--ease);
 }
+.skip-link:not(:focus) { visibility: hidden; }
 .skip-link:focus { transform: none; }
 
 /* ---------- Layout ---------- */

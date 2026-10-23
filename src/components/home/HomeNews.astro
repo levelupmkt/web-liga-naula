@@ -1,0 +1,42 @@
+---
+import { news, publishedPosts } from '../../content/site';
+import SectionHeading from '../SectionHeading.astro';
+import FeaturedPost from '../FeaturedPost.astro';
+import PostCard from '../PostCard.astro';
+import Icon from '../Icon.astro';
+
+const featured = publishedPosts.find((p) => p.featured) ?? publishedPosts[0];
+const rest = publishedPosts.filter((p) => p !== featured).slice(0, 3);
+---
+<section id="actualidad" class="section h-news" aria-labelledby="h-news-title">
+  <div class="container">
+    <div class="h-news__head">
+      <SectionHeading kicker="Novedades" title={news.title} lead={news.lead} id="h-news-title" />
+      <a class="btn btn--ghost" href={news.home.cta.href} data-reveal>
+        {news.home.cta.label} <Icon name="arrow-right" size={18} />
+      </a>
+    </div>
+
+    {featured ? (
+      <>
+        <div class="h-news__featured"><FeaturedPost post={featured} /></div>
+        {rest.length > 0 && (
+          <ul class="h-news__grid">
+            {rest.map((p, i) => <li><PostCard post={p} delay={i * 80} /></li>)}
+          </ul>
+        )}
+      </>
+    ) : (
+      <p class="h-news__empty">{news.empty}</p>
+    )}
+  </div>
+</section>
+
+<style>
+  .h-news__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+  .h-news__featured { margin-top: 48px; }
+  .h-news__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; list-style: none; margin: 20px 0 0; padding: 0; }
+  .h-news__empty { margin-top: 32px; padding: 40px; border: 2px dashed var(--gray); border-radius: var(--radius); text-align: center; color: var(--ink-soft); }
+  @media (max-width: 1023px) { .h-news__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 767px) { .h-news__grid { grid-template-columns: 1fr; } }
+</style>

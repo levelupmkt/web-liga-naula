@@ -1,0 +1,103 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import NextPages from '../components/NextPages.astro';
+import Icon from '../components/Icon.astro';
+import { plan, photos, formatDate } from '../content/site';
+
+const approved = plan.approved;
+---
+<BaseLayout title="Plan de gobierno · Ligia Naula" description={plan.lead}>
+  <PageHero kicker="Plan de gobierno" title={plan.title} lead={plan.lead} photo={photos.youth}>
+    <p class="status"><Icon name={approved ? 'check' : 'clock'} size={16} />
+      {approved ? `Versión ${approved.version} · ${formatDate(approved.date)}` : plan.statusLabel}
+    </p>
+  </PageHero>
+
+  <section class="section intro">
+    <div class="container intro__grid">
+      <p class="intro__text" data-reveal>{plan.intro}</p>
+      <div class="intro__download" data-reveal>
+        {approved ? (
+          <a class="btn" href={approved.pdfUrl} target="_blank" rel="noopener noreferrer" download>
+            <Icon name="download" size={18} /> {plan.downloadLabel}
+          </a>
+        ) : (
+          <>
+            <button class="btn" type="button" disabled aria-describedby="plan-download-note">
+              <Icon name="download" size={18} /> {plan.downloadLabel}
+            </button>
+            <p id="plan-download-note" class="intro__hint">Disponible cuando exista una versión oficial aprobada.</p>
+          </>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <nav class="axes-nav" aria-label="Ejes del plan">
+    <ul class="container">
+      {plan.axes.map((a) => <li><a href={`#eje-${a.num}`}><span>{a.num}</span> {a.title}</a></li>)}
+    </ul>
+  </nav>
+
+  <div class="axes">
+    {plan.axes.map((axis, i) => (
+      <section id={`eje-${axis.num}`} class:list={['axis', { 'axis--alt': i % 2 }]} aria-labelledby={`eje-${axis.num}-title`}>
+        <div class="container axis__grid">
+          <header class="axis__head" data-reveal>
+            <span class="axis__num">Eje {axis.num}</span>
+            <h2 class="axis__title" id={`eje-${axis.num}-title`}>{axis.title}</h2>
+            <p class="axis__summary">{axis.summary}</p>
+          </header>
+          <div class="axis__lists" data-reveal>
+            <div>
+              <h3 class="axis__sub"><Icon name="target" size={18} /> Objetivos</h3>
+              <ul>{axis.objectives.map((o) => <li>{o}</li>)}</ul>
+            </div>
+            <div>
+              <h3 class="axis__sub"><Icon name="list" size={18} /> Líneas de acción</h3>
+              <ul>{axis.actions.map((a) => <li>{a}</li>)}</ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    ))}
+  </div>
+
+  <NextPages current="/plan-de-gobierno" />
+</BaseLayout>
+
+<style>
+  .status { display: inline-flex; align-items: center; gap: 8px; margin-top: 24px; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--white); font-size: 0.875rem; }
+
+  .intro { padding-bottom: clamp(40px, 5vw, 64px); }
+  .intro__grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 32px 64px; align-items: center; }
+  .intro__text { font-size: clamp(1.25rem, 2vw, 1.625rem); line-height: 1.4; }
+  .intro__download { display: grid; gap: 8px; justify-items: start; }
+  .intro__hint { font-size: 0.875rem; color: var(--ink-soft); }
+
+  .axes-nav { position: sticky; top: 60px; z-index: 10; background: rgb(255 255 255 / 0.92); backdrop-filter: blur(10px); border-block: 1px solid var(--line); }
+  .axes-nav ul { display: flex; gap: 8px; list-style: none; margin-block: 0; padding-block: 12px; overflow-x: auto; scrollbar-width: none; }
+  .axes-nav a { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; text-decoration: none; font-size: 0.9375rem; transition: background-color 150ms var(--ease), color 150ms var(--ease); }
+  .axes-nav a:hover { background: var(--ink); color: var(--white); }
+  .axes-nav span { font-family: var(--font-display); color: var(--orange-ink); }
+  .axes-nav a:hover span { color: var(--orange); }
+
+  .axis { padding-block: clamp(56px, 8vw, 104px); scroll-margin-top: 120px; }
+  .axis--alt { background: var(--surface); }
+  .axis__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 40px 64px; align-items: start; }
+  .axis__num { display: inline-block; padding: 6px 14px; border-radius: 999px; background: var(--orange); font-size: 0.875rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .axis__title { margin-top: 18px; font-size: clamp(2.25rem, 5vw, 4rem); text-transform: uppercase; }
+  .axis__summary { margin-top: 18px; font-size: 1.1875rem; color: var(--ink-soft); max-width: 40ch; }
+  .axis__lists { display: grid; gap: 24px; }
+  .axis__lists > div { padding: 28px; border-radius: var(--radius); background: var(--white); border: 1px solid var(--line); }
+  .axis__sub { display: flex; align-items: center; gap: 8px; font-family: var(--font-body); font-size: 0.8125rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+  .axis__sub :global(svg) { color: var(--orange-ink); }
+  .axis__lists ul { display: grid; gap: 12px; list-style: none; margin: 16px 0 0; padding: 0; }
+  .axis__lists li { position: relative; padding-left: 26px; font-size: 1.0625rem; }
+  .axis__lists li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 10px; height: 10px; border-radius: 50%; background: var(--orange); }
+
+  @media (max-width: 900px) {
+    .intro__grid, .axis__grid { grid-template-columns: 1fr; }
+  }
+</style>

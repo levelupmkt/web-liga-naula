@@ -1,0 +1,288 @@
+---
+import '../styles/global.css';
+import '../styles/admin.css';
+import Icon from '../components/Icon.astro';
+import { currentUser, ROLE_LABEL, type Role } from '../content/admin-demo';
+
+interface Props {
+  title: string;
+  /** Roles que pueden ver esta pantalla (vacío = todos). */
+  roles?: Role[];
+}
+const { title, roles = [] } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '');
+
+const nav = [
+  { href: '/admin', label: 'Inicio', icon: 'home', roles: [] },
+  { href: '/admin/encuestas', label: 'Encuestas', icon: 'chart', roles: ['admin', 'analista', 'lector'] },
+  { href: '/admin/mapa', label: 'Mapa de calor', icon: 'map', roles: ['admin', 'analista', 'lector'] },
+  { href: '/admin/campo', label: 'Reportes de campo', icon: 'clipboard', roles: [] },
+  { href: '/admin/usuarios', label: 'Usuarios', icon: 'users', roles: ['admin'] },
+  { href: '/admin/ajustes', label: 'Ajustes', icon: 'settings', roles: ['admin'] },
+] as const;
+const isActive = (href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(`${href}/`));
+const initials = currentUser.nombre.split(' ').map((w) => w[0]).slice(0, 2).join('');
+---
+<!doctype html>
+<html lang="es-EC" data-role="admin">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · Panel de campaña (demo)</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      try { var r = localStorage.getItem('demo-role'); if (r) document.documentElement.dataset.role = r; } catch (e) {}
+    </script>
+  </head>
+  <body class="admin-body">
+    <a class="skip-link" href="#admin-main">Saltar al contenido</a>
+
+    <div class="demo-bar" role="note">
+      <Icon name="info" size={16} />
+      <span><strong>Prototipo de demostración</strong> · datos ficticios · nada se guarda</span>
+    </div>
+
+    <div class="shell">
+      <aside class="side" id="admin-side" data-side>
+        <a class="side__brand" href="/admin">
+          <span class="side__mark" aria-hidden="true">L</span>
+          <span>
+            <strong>Ligia Naula</strong>
+            <small>Panel de campaña</small>
+          </span>
+        </a>
+        <nav aria-label="Panel">
+          <ul class="side__nav">
+            {nav.map((item) => (
+              <li data-roles={item.roles.join(',')}>
+                <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+                  <Icon name={item.icon} size={20} />
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div class="side__foot">
+          <a class="side__link" href="/" target="_blank" rel="noopener">
+            <Icon name="external" size={16} /> Ver web pública
+          </a>
+          <a class="side__link" href="/e/prioridades-barrio" target="_blank" rel="noopener">
+            <Icon name="eye" size={16} /> Ver votación (demo)
+          </a>
+        </div>
+      </aside>
+      <div class="side-scrim" data-side-scrim hidden></div>
+
+      <div class="main-col">
+        <header class="top">
+          <button class="abtn abtn--icon abtn--ghost top__menu" type="button" aria-controls="admin-side" aria-expanded="false" data-side-toggle>
+            <Icon name="menu" size={20} /><span class="sr-only">Menú</span>
+          </button>
+          <label class="top__search">
+            <Icon name="search" size={18} />
+            <span class="sr-only">Buscar</span>
+            <input type="search" placeholder="Buscar encuestas, barrios, reportes…" />
+          </label>
+          <div class="top__right">
+            <label class="role-switch">
+              <span>Ver como</span>
+              <select class="aselect" data-role-select>
+                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => <option value={r}>{ROLE_LABEL[r]}</option>)}
+              </select>
+            </label>
+            <button class="abtn abtn--icon abtn--ghost" type="button" aria-label="Notificaciones">
+              <Icon name="bell" size={18} />
+            </button>
+            <details class="user">
+              <summary>
+                <span class="user__avatar" aria-hidden="true">{initials}</span>
+                <span class="user__name">{currentUser.nombre}</span>
+              </summary>
+              <div class="user__menu">
+                <p class="small muted">{currentUser.correo}</p>
+                <p class="small"><Icon name="shield" size={14} /> Segundo factor activo</p>
+                <a class="abtn abtn--sm" href="/admin/login"><Icon name="logout" size={16} /> Cerrar sesión</a>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <main id="admin-main" class="content" tabindex="-1" data-requires={roles.join(',')}>
+          <div class="no-access" hidden data-no-access>
+            <span class="no-access__icon"><Icon name="lock" size={24} /></span>
+            <h2>Sin permiso para esta sección</h2>
+            <p>Tu rol actual (<strong data-role-name></strong>) no tiene acceso. Así lo verá cada usuario según su rol.</p>
+            <a class="abtn" href="/admin">Volver al inicio</a>
+          </div>
+          <div data-page-content>
+            <slot />
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="toast" role="status" aria-live="polite" data-toast><Icon name="check" size={18} /><span></span></div>
+
+    <script>
+      const ROLE_NAMES: Record<string, string> = { admin: 'Administrador', analista: 'Analista', campo: 'Campo', lector: 'Lector' };
+      const root = document.documentElement;
+      const select = document.querySelector<HTMLSelectElement>('[data-role-select]')!;
+
+      function applyRole(role: string) {
+        root.dataset.role = role;
+        select.value = role;
+        document.querySelectorAll<HTMLElement>('[data-roles]').forEach((el) => {
+          const allowed = el.dataset.roles!.split(',').filter(Boolean);
+          el.hidden = allowed.length > 0 && !allowed.includes(role);
+        });
+        const main = document.querySelector<HTMLElement>('[data-requires]')!;
+        const req = main.dataset.requires!.split(',').filter(Boolean);
+        const blocked = req.length > 0 && !req.includes(role);
+        document.querySelector<HTMLElement>('[data-no-access]')!.hidden = !blocked;
+        document.querySelector<HTMLElement>('[data-page-content]')!.hidden = blocked;
+        document.querySelector('[data-role-name]')!.textContent = ROLE_NAMES[role];
+      }
+      applyRole(root.dataset.role || 'admin');
+      select.addEventListener('change', () => {
+        try { localStorage.setItem('demo-role', select.value); } catch {}
+        applyRole(select.value);
+        (window as any).demoToast?.(`Viendo el panel como: ${ROLE_NAMES[select.value]}`);
+      });
+
+      // Menú lateral en móvil
+      const side = document.querySelector<HTMLElement>('[data-side]')!;
+      const scrim = document.querySelector<HTMLElement>('[data-side-scrim]')!;
+      const toggle = document.querySelector<HTMLButtonElement>('[data-side-toggle]')!;
+      const setSide = (open: boolean) => {
+        side.classList.toggle('is-open', open);
+        scrim.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+      };
+      toggle.addEventListener('click', () => setSide(!side.classList.contains('is-open')));
+      scrim.addEventListener('click', () => setSide(false));
+      document.addEventListener('keydown', (e) => e.key === 'Escape' && setSide(false));
+
+      // Toast global para acciones de demostración
+      const toast = document.querySelector<HTMLElement>('[data-toast]')!;
+      let timer: number;
+      (window as any).demoToast = (msg: string) => {
+        toast.querySelector('span')!.textContent = msg;
+        toast.classList.add('is-on');
+        clearTimeout(timer);
+        timer = window.setTimeout(() => toast.classList.remove('is-on'), 2800);
+      };
+      document.addEventListener('click', (e) => {
+        const el = (e.target as HTMLElement).closest<HTMLElement>('[data-demo]');
+        if (el) {
+          e.preventDefault();
+          (window as any).demoToast(el.dataset.demo);
+        }
+      });
+    </script>
+
+    <style>
+      .demo-bar {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 7px 16px;
+        background: var(--orange);
+        color: var(--ink);
+        font-size: 0.8125rem;
+        text-align: center;
+      }
+      .shell { display: grid; grid-template-columns: 264px minmax(0, 1fr); min-height: calc(100dvh - 34px); }
+
+      .side {
+        position: sticky;
+        top: 34px;
+        height: calc(100dvh - 34px);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 22px 16px;
+        background: var(--ink);
+        color: #e5e5e5;
+        overflow-y: auto;
+      }
+      .side__brand { display: flex; align-items: center; gap: 12px; padding: 0 8px; text-decoration: none; color: var(--white); }
+      .side__brand strong { display: block; font-family: var(--font-display); font-weight: 500; font-size: 1.125rem; }
+      .side__brand small { display: block; font-size: 0.75rem; color: #a3a3a3; }
+      .side__mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--orange); color: var(--ink); font-family: var(--font-display); font-size: 1.25rem; }
+      .side__nav { display: grid; gap: 2px; list-style: none; margin: 0; padding: 0; }
+      .side__nav li[hidden] { display: none; }
+      .side__nav a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        padding: 0 12px;
+        border-radius: 10px;
+        color: #d4d4d4;
+        text-decoration: none;
+        font-size: 0.9375rem;
+        transition: background-color 150ms var(--ease), color 150ms var(--ease);
+      }
+      .side__nav a:hover { background: rgb(255 255 255 / 0.07); color: var(--white); }
+      .side__nav a[aria-current='page'] { background: var(--orange); color: var(--ink); }
+      .side__foot { display: grid; gap: 4px; margin-top: auto; padding-top: 16px; border-top: 1px solid #2e2e2e; }
+      .side__link { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; color: #a3a3a3; text-decoration: none; font-size: 0.875rem; }
+      .side__link:hover { color: var(--white); background: rgb(255 255 255 / 0.07); }
+      .side :focus-visible { outline-color: var(--orange); }
+
+      .top {
+        position: sticky;
+        top: 34px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 64px;
+        padding: 0 24px;
+        background: rgb(255 255 255 / 0.9);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+      .top__menu { display: none; }
+      .top__search { display: flex; align-items: center; gap: 8px; flex: 1; max-width: 420px; height: 40px; padding: 0 12px; border-radius: 10px; background: var(--surface); color: var(--ink-soft); }
+      .top__search input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 0.9375rem; color: var(--ink); }
+      .top__search input:focus { outline: none; }
+      .top__search:focus-within { box-shadow: 0 0 0 2px var(--ink); }
+      .top__right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+      .role-switch { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; color: var(--ink-soft); }
+      .role-switch .aselect { min-height: 36px; width: auto; padding-block: 4px; font-size: 0.875rem; }
+
+      .user { position: relative; }
+      .user summary { display: flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; padding: 4px; border-radius: 999px; }
+      .user summary::-webkit-details-marker { display: none; }
+      .user__avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: var(--orange); font-size: 0.8125rem; }
+      .user__name { font-size: 0.875rem; }
+      .user__menu { position: absolute; right: 0; top: calc(100% + 8px); display: grid; gap: 10px; min-width: 240px; padding: 16px; border-radius: 14px; background: var(--white); border: 1px solid var(--line); box-shadow: var(--shadow); }
+      .user__menu p { display: flex; align-items: center; gap: 6px; }
+
+      .content { padding: 28px 24px 64px; max-width: 1360px; width: 100%; }
+      .side-scrim { position: fixed; inset: 0; z-index: 44; background: rgb(0 0 0 / 0.4); }
+
+      @media (max-width: 1023px) {
+        .shell { grid-template-columns: minmax(0, 1fr); }
+        .side { position: fixed; z-index: 45; top: 0; left: 0; height: 100dvh; width: 280px; transform: translateX(-100%); transition: transform 250ms var(--ease); }
+        .side.is-open { transform: none; }
+        .top__menu { display: inline-flex; }
+        .user__name { display: none; }
+      }
+      @media (max-width: 640px) {
+        .top { padding: 0 12px; gap: 6px; }
+        .top__search { display: none; }
+        .role-switch span { display: none; }
+        .content { padding: 20px 14px 56px; }
+      }
+    </style>
+  </body>
+</html>

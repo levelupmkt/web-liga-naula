@@ -1,0 +1,57 @@
+---
+import { trajectory } from '../../content/site';
+import SectionHeading from '../SectionHeading.astro';
+import Icon from '../Icon.astro';
+---
+<section id="trayectoria" class="section h-traj" aria-labelledby="h-traj-title">
+  <div class="container">
+    <div class="h-traj__head">
+      <SectionHeading kicker="Su camino" title={trajectory.title} lead={trajectory.lead} id="h-traj-title" />
+      <a class="btn btn--ghost" href={trajectory.home.cta.href} data-reveal>
+        {trajectory.home.cta.label} <Icon name="arrow-right" size={18} />
+      </a>
+    </div>
+
+    <ol class="steps">
+      {trajectory.home.milestones.map((m, i) => (
+        <li class="step" data-reveal style={`--delay:${i * 90}ms`}>
+          <span class="step__year">{m.year}</span>
+          <h3 class="step__title">{m.title}</h3>
+          <p class="step__text">{m.text}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .h-traj { background: var(--surface); }
+  .h-traj__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+  .steps { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; list-style: none; margin: 56px 0 0; padding: 0; }
+  .steps::before { content: ''; position: absolute; top: 34px; left: 24px; right: 24px; height: 2px; background: linear-gradient(90deg, var(--orange), var(--gray)); }
+  .step { position: relative; display: grid; gap: 12px; align-content: start; }
+  .step__year {
+    justify-self: start;
+    display: grid;
+    place-items: center;
+    min-width: 68px;
+    height: 68px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--white);
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    box-shadow: 0 0 0 8px var(--surface);
+  }
+  .step:last-child .step__year { background: var(--orange); color: var(--ink); }
+  .step__title { margin-top: 12px; font-size: clamp(1.5rem, 2.4vw, 1.875rem); line-height: 1.05; }
+  .step__text { color: var(--ink-soft); max-width: 34ch; }
+  @media (max-width: 767px) {
+    .steps { grid-template-columns: 1fr; gap: 32px; }
+    .steps::before { top: 0; bottom: 0; left: 33px; right: auto; width: 2px; height: auto; background: linear-gradient(var(--orange), var(--gray)); }
+    .step { grid-template-columns: 68px 1fr; column-gap: 20px; }
+    .step__year { grid-row: span 2; }
+    .step__title { margin-top: 0; }
+  }
+</style>

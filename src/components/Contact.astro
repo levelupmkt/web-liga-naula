@@ -1,18 +1,24 @@
 ---
 import { contact, status } from '../content/site';
-import SectionHeading from './SectionHeading.astro';
+import SocialLinks from './SocialLinks.astro';
 import Icon from './Icon.astro';
 
 // En producción se ocultan los canales sin dato confirmado.
 const channels = contact.channels.filter((c) => c.value || status.draft);
 const isDemo = !contact.formEndpoint;
 ---
-<section id="contacto" class="section contact" aria-labelledby="contact-title">
+<section class="section contact" aria-labelledby="contact-title">
   <div class="container contact__grid">
     <div class="contact__info">
-      <SectionHeading kicker="Canales" title={contact.title} lead={contact.lead} id="contact-title" />
+      <h2 class="contact__title" id="contact-title" data-reveal>Canales de contacto</h2>
       <p class="contact__text" data-reveal>{contact.text}</p>
 
+      <div class="contact__social" data-reveal>
+        <h3 class="contact__sub">Redes sociales oficiales</h3>
+        <SocialLinks variant="list" />
+      </div>
+
+      <h3 class="contact__sub" data-reveal>Otros canales</h3>
       <ul class="channels" data-reveal>
         {channels.map((c) => (
           <li>
@@ -21,7 +27,7 @@ const isDemo = !contact.formEndpoint;
             {c.value ? (
               c.href ? <a class="channels__value" href={c.href}>{c.value}</a> : <span class="channels__value">{c.value}</span>
             ) : (
-              <span class="channels__value channels__value--pending">{c.pending ?? 'pendiente de confirmación'}</span>
+              <span class="channels__value channels__value--pending">pendiente de confirmación</span>
             )}
           </li>
         ))}
@@ -85,11 +91,9 @@ const isDemo = !contact.formEndpoint;
 </section>
 
 <style>
-  .contact {
-    background:
-      radial-gradient(90% 80% at 0% 100%, #ff8a26 0%, transparent 60%),
-      var(--orange);
-  }
+  .contact { background: var(--surface); }
+  .contact__title { font-size: clamp(2rem, 4vw, 3rem); text-transform: uppercase; }
+  .contact__sub { margin: 36px 0 14px; font-family: var(--font-body); font-size: 0.8125rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
   .contact__grid {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -99,12 +103,9 @@ const isDemo = !contact.formEndpoint;
   .contact__info { grid-column: 1 / span 6; }
   .form { grid-column: 8 / span 5; }
 
-  .contact :global(.kicker) { color: var(--ink); }
-  .contact :global(.kicker::before) { background: var(--ink); }
-  .contact :global(.lead) { color: var(--ink); }
-  .contact__text { margin-top: 20px; max-width: 46ch; }
+  .contact__text { margin-top: 16px; max-width: 46ch; color: var(--ink-soft); }
 
-  .channels { list-style: none; margin: 40px 0 0; padding: 0; border-top: 1px solid rgb(0 0 0 / 0.18); }
+  .channels { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
   .channels li {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -112,7 +113,7 @@ const isDemo = !contact.formEndpoint;
     gap: 2px 16px;
     align-items: center;
     padding: 18px 0;
-    border-bottom: 1px solid rgb(0 0 0 / 0.18);
+    border-bottom: 1px solid var(--line);
   }
   .channels__icon {
     grid-row: span 2;
@@ -134,7 +135,8 @@ const isDemo = !contact.formEndpoint;
     padding: clamp(24px, 3vw, 36px);
     border-radius: 24px;
     background: var(--white);
-    box-shadow: 0 40px 80px -40px rgb(80 30 0 / 0.5);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
   }
   .form__demo {
     display: flex;

@@ -1,0 +1,121 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { settings, surveys, audit, ANON_THRESHOLD } from '../../content/admin-demo';
+
+const cerradas = surveys.filter((s) => s.estado === 'cerrada');
+---
+<AdminLayout title="Ajustes" roles={['admin']}>
+  <div class="page-head">
+    <div>
+      <h1>Ajustes</h1>
+      <p>Configuración general del módulo de encuestas.</p>
+    </div>
+  </div>
+
+  <section class="panel silence" data-silence-panel>
+    <div class="silence__head">
+      <span class="silence__icon"><Icon name="pause" size={22} /></span>
+      <div>
+        <h2 class="panel__title">Silencio electoral</h2>
+        <p class="small muted">Pausa todas las encuestas públicas a la vez. Los enlaces muestran un aviso y no aceptan votos.</p>
+      </div>
+      <label class="switch silence__switch">
+        <input type="checkbox" data-silence />
+        <span class="switch__track"></span>
+        <span class="sr-only">Activar silencio electoral ahora</span>
+      </label>
+    </div>
+    <p class="silence__state" data-silence-state></p>
+    <div class="schedule">
+      <h3 class="sub">Programar</h3>
+      <div class="three">
+        <div class="afield"><label for="s-from">Desde</label><input class="ainput" id="s-from" type="datetime-local" value={settings.silencioDesde} /></div>
+        <div class="afield"><label for="s-to">Hasta</label><input class="ainput" id="s-to" type="datetime-local" value={settings.silencioHasta} /></div>
+        <div class="afield"><label for="s-tz">Zona horaria</label><input class="ainput" id="s-tz" value={settings.zona} readonly /></div>
+      </div>
+      <button class="abtn abtn--sm" type="button" data-demo="Demo: el silencio electoral quedaría programado">Guardar programación</button>
+    </div>
+  </section>
+
+  <div class="grid grid--2 mt">
+    <section class="panel">
+      <h2 class="panel__title">Verificación de votantes</h2>
+      <ul class="settings">
+        <li><span>Código por correo (6 dígitos)<small>Vence en 10 minutos · máximo 5 intentos</small></span><label class="switch"><input type="checkbox" checked disabled /><span class="switch__track"></span><span class="sr-only">Activo</span></label></li>
+        <li><span>Código por SMS<small>Disponible más adelante</small></span><label class="switch"><input type="checkbox" disabled /><span class="switch__track"></span><span class="sr-only">Inactivo</span></label></li>
+        <li><span>Captcha invisible (Cloudflare Turnstile)</span><label class="switch"><input type="checkbox" checked /><span class="switch__track"></span><span class="sr-only">Activo</span></label></li>
+        <li><span>Límite de solicitudes por IP<small>20 por hora</small></span><label class="switch"><input type="checkbox" checked /><span class="switch__track"></span><span class="sr-only">Activo</span></label></li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel__title">Privacidad</h2>
+      <ul class="settings">
+        <li><span>Umbral de anonimato<small>Grupos con menos respuestas no se desglosan</small></span><strong>{ANON_THRESHOLD}</strong></li>
+        <li><span>Purga de códigos de verificación<small>Automática</small></span><strong>cada 24 h</strong></li>
+        <li><span>Respuestas separadas de la identidad<small>Nadie puede saber qué respondió una persona</small></span><span class="badge badge--activa">Siempre</span></li>
+      </ul>
+      <h3 class="sub">Borrar datos de verificación</h3>
+      <ul class="settings">
+        {cerradas.map((s) => (
+          <li><span>{s.titulo}<small>Cerrada</small></span><button class="abtn abtn--sm abtn--danger" type="button" data-demo={`Demo: se borrarían los datos de verificación de «${s.titulo}»`}><Icon name="trash" size={14} /> Borrar</button></li>
+        ))}
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel mt">
+    <div class="panel__head">
+      <h2 class="panel__title">Registro de auditoría</h2>
+      <button class="abtn abtn--sm" type="button" data-demo="Demo: se descargaría el registro completo"><Icon name="download" size={14} /> Exportar</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th></tr></thead>
+        <tbody>{audit.map((a) => <tr><td class="small">{a.fecha}</td><td>{a.usuario}</td><td>{a.accion}</td><td class="muted">{a.entidad}</td></tr>)}</tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  // El estado se guarda en el navegador para que la página pública de votación (demo) lo refleje.
+  const box = document.querySelector<HTMLInputElement>('[data-silence]')!;
+  const state = document.querySelector<HTMLElement>('[data-silence-state]')!;
+  const panel = document.querySelector<HTMLElement>('[data-silence-panel]')!;
+  const read = () => { try { return localStorage.getItem('demo-silencio') === '1'; } catch { return false; } };
+  function paint(on: boolean) {
+    box.checked = on;
+    panel.classList.toggle('is-on', on);
+    state.innerHTML = on
+      ? '<strong>Activo:</strong> todas las encuestas públicas están pausadas. Abre <a href="/e/prioridades-barrio" target="_blank">/e/prioridades-barrio</a> para ver el aviso.'
+      : 'Inactivo: las encuestas activas aceptan votos.';
+  }
+  paint(read());
+  box.addEventListener('change', () => {
+    try { localStorage.setItem('demo-silencio', box.checked ? '1' : '0'); } catch {}
+    paint(box.checked);
+    (window as any).demoToast(box.checked ? 'Silencio electoral activado' : 'Silencio electoral desactivado');
+  });
+</script>
+
+<style>
+  .mt { margin-top: 16px; }
+  .silence { transition: border-color 200ms var(--ease), background-color 200ms var(--ease); }
+  .silence:global(.is-on) { border-color: var(--orange); background: var(--orange-soft); }
+  .silence__head { display: flex; align-items: center; gap: 16px; }
+  .silence__icon { display: grid; place-items: center; flex-shrink: 0; width: 48px; height: 48px; border-radius: 14px; background: var(--ink); color: var(--orange); }
+  .silence__switch { margin-left: auto; }
+  .silence__state { margin: 16px 0; padding: 12px 14px; border-radius: 10px; background: var(--surface); font-size: 0.9375rem; }
+  .silence:global(.is-on) .silence__state { background: var(--white); }
+  .schedule { display: grid; gap: 12px; justify-items: start; }
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; }
+  .sub { margin: 20px 0 8px; font-family: var(--font-body); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .schedule .sub { margin: 0; }
+  .settings { display: grid; list-style: none; margin: 12px 0 0; padding: 0; }
+  .settings li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 0.9375rem; }
+  .settings li:last-child { border-bottom: 0; }
+  .settings small { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
+  @media (max-width: 720px) { .three { grid-template-columns: minmax(0, 1fr); } }
+</style>

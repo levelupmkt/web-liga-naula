@@ -1,0 +1,77 @@
+---
+// Encabezado de las páginas internas (contiene el único H1 de la página).
+import { Image } from 'astro:assets';
+import type { Photo } from '../content/site';
+import Icon from './Icon.astro';
+
+interface Props {
+  kicker: string;
+  title: string;
+  lead?: string;
+  photo?: Photo;
+  crumbs?: Array<{ label: string; href: string }>;
+}
+const { kicker, title, lead, photo, crumbs = [] } = Astro.props;
+---
+<section class:list={['page-hero', { 'page-hero--photo': photo }]}>
+  <svg class="page-hero__lines" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    {Array.from({ length: 6 }, (_, i) => (
+      <path d={`M-50 ${250 + i * 28} C 260 ${180 + i * 26}, 520 ${330 + i * 18}, 780 ${240 + i * 22} S 1120 ${160 + i * 24}, 1260 ${220 + i * 24}`} />
+    ))}
+  </svg>
+  <div class="container page-hero__grid">
+    <div class="page-hero__copy">
+      <nav aria-label="Ruta de navegación">
+        <ol class="crumbs">
+          <li><a href="/">Inicio</a></li>
+          {crumbs.map((c) => <li><a href={c.href}>{c.label}</a></li>)}
+          <li aria-current="page">{kicker}</li>
+        </ol>
+      </nav>
+      <h1 class="page-hero__title">{title}</h1>
+      {lead && <p class="page-hero__lead">{lead}</p>}
+      <slot />
+    </div>
+    {photo && (
+      <div class="page-hero__media">
+        <Image src={photo.src} alt={photo.alt} widths={[480, 800, 1100]} sizes="(min-width: 1024px) 42vw, 100vw" loading="eager" class="page-hero__img" />
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .page-hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, #ff7a0a 0%, var(--orange) 55%, #f26c00 100%);
+    color: var(--ink);
+    padding-block: clamp(40px, 6vw, 80px) clamp(48px, 7vw, 96px);
+  }
+  .page-hero__lines { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: rgb(255 255 255 / 0.28); stroke-width: 1.25; pointer-events: none; }
+  .page-hero__grid { position: relative; display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; }
+  .page-hero--photo .page-hero__grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+
+  .crumbs { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
+  .crumbs li + li::before { content: '/'; margin-right: 6px; opacity: 0.6; }
+  .crumbs a { text-decoration: none; opacity: 0.8; }
+  .crumbs a:hover { opacity: 1; text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; }
+
+  .page-hero__title {
+    margin-top: 20px;
+    font-size: clamp(2.75rem, 7.5vw, 6rem);
+    line-height: 0.92;
+    text-transform: uppercase;
+    max-width: 16ch;
+  }
+  .page-hero__lead { margin-top: 20px; font-size: clamp(1.125rem, 1.8vw, 1.375rem); max-width: 44ch; }
+
+  .page-hero__media { border-radius: 24px; overflow: hidden; border: 6px solid var(--white); aspect-ratio: 4 / 3.4; transform: rotate(1.5deg); box-shadow: 0 40px 80px -40px rgb(80 30 0 / 0.55); }
+  .page-hero__img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+
+  @media (max-width: 900px) {
+    .page-hero--photo .page-hero__grid { grid-template-columns: 1fr; }
+    .page-hero__media { transform: none; aspect-ratio: 4 / 3; }
+  }
+</style>

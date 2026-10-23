@@ -1,0 +1,59 @@
+---
+import { Image } from 'astro:assets';
+import { about, photos } from '../../content/site';
+import SectionHeading from '../SectionHeading.astro';
+import Icon from '../Icon.astro';
+---
+<section id="conoce-a-ligia" class="section h-about" aria-labelledby="h-about-title">
+  <div class="container h-about__grid">
+    <div class="h-about__media" data-reveal>
+      <div class="h-about__photo">
+        <Image src={photos.portrait.src} alt={photos.portrait.alt} widths={[480, 720, 960]} sizes="(min-width: 1024px) 40vw, 100vw" class="h-about__img" />
+      </div>
+      <span class="h-about__block" aria-hidden="true"></span>
+    </div>
+
+    <div class="h-about__copy">
+      <SectionHeading kicker="Quién es Ligia" title={about.title} lead={about.lead} id="h-about-title" />
+      <p class="h-about__text" data-reveal>{about.home.text}</p>
+
+      <ul class="facts" data-reveal>
+        {about.home.facts.map((f) => (
+          <li>
+            <strong>{f.value}</strong>
+            <span>{f.label}</span>
+          </li>
+        ))}
+      </ul>
+
+      <a class="btn" href={about.home.cta.href} data-reveal>
+        {about.home.cta.label} <Icon name="arrow-right" size={18} />
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .h-about__grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 48px 24px; align-items: center; }
+  .h-about__media { grid-column: 1 / span 5; position: relative; }
+  .h-about__copy { grid-column: 7 / span 6; }
+  .h-about__photo { position: relative; z-index: 1; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4 / 5; }
+  .h-about__img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
+  .h-about__block { position: absolute; right: -24px; bottom: -24px; width: 70%; height: 60%; border-radius: var(--radius); background: var(--orange); }
+  .h-about__text { margin-top: 28px; font-size: 1.1875rem; max-width: 52ch; }
+
+  .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; margin: 36px 0; padding: 28px 0; border-block: 1px solid var(--line); }
+  .facts li { display: grid; gap: 6px; }
+  .facts strong { font-family: var(--font-display); font-weight: 500; font-size: clamp(2.25rem, 4vw, 3.25rem); line-height: 1; }
+  .facts strong::after { content: ''; display: block; width: 28px; height: 3px; margin-top: 10px; background: var(--orange); border-radius: 2px; }
+  .facts span { font-size: 0.9375rem; color: var(--ink-soft); }
+
+  @media (max-width: 1023px) {
+    .h-about__media { grid-column: 1 / -1; max-width: 520px; }
+    .h-about__copy { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    .h-about__block { right: -12px; bottom: -12px; }
+    .facts { grid-template-columns: 1fr; gap: 20px; }
+  }
+</style>

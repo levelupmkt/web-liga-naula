@@ -1,0 +1,129 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import NextPages from '../components/NextPages.astro';
+import Icon from '../components/Icon.astro';
+import { about, photos, statement, status } from '../content/site';
+---
+<BaseLayout title="Conoce a Ligia · Ligia Naula" description={about.lead}>
+  <PageHero kicker="Conoce a Ligia" title={about.title} lead={about.lead} photo={photos.portrait}>
+    <ul class="hero-facts">
+      {about.home.facts.map((f) => <li><strong>{f.value}</strong> {f.label}</li>)}
+    </ul>
+  </PageHero>
+
+  <section class="section bio" aria-labelledby="bio-title">
+    <div class="container">
+      <h2 id="bio-title" class="sr-only">Biografía</h2>
+      {status.draft && (
+        <p class="bio__draft"><span class="tag tag--pending">Borrador · biografía pendiente de aprobación</span></p>
+      )}
+      {about.officialBiography ? (
+        <div class="bio__official" set:html={about.officialBiography} />
+      ) : (
+        <ol class="chapters">
+          {about.chapters.map((c, i) => (
+            <li class="chapter" data-reveal>
+              <div class="chapter__head">
+                <span class="chapter__num">{String(i + 1).padStart(2, '0')}</span>
+                <h3 class="chapter__title">{c.title}</h3>
+              </div>
+              <div class="chapter__text">
+                {c.text.map((p) => <p>{p}</p>)}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  </section>
+
+  <section class="quote" aria-label="Frase destacada">
+    <div class="container" data-reveal>
+      <p class="quote__text">“{statement.text}”</p>
+      <p class="quote__caption">{statement.caption}</p>
+    </div>
+  </section>
+
+  <section class="section values" aria-labelledby="values-title">
+    <div class="container">
+      <span class="kicker" data-reveal>Lo que la mueve</span>
+      <h2 id="values-title" class="h2" data-reveal>Sus valores</h2>
+      <ul class="values__grid">
+        {about.values.map((v, i) => (
+          <li class="value" data-reveal style={`--delay:${i * 70}ms`}>
+            <span class="value__icon"><Icon name="heart" size={22} /></span>
+            <h3 class="value__title">{v.title}</h3>
+            <p>{v.text}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="gallery" aria-labelledby="gallery-title">
+    <div class="container">
+      <span class="kicker" data-reveal>En territorio</span>
+      <h2 id="gallery-title" class="h2" data-reveal>Junto a su gente</h2>
+    </div>
+    <ul class="gallery__grid">
+      {about.gallery.map((p, i) => (
+        <li class={`gallery__item gallery__item--${i + 1}`} data-reveal style={`--delay:${i * 70}ms`}>
+          <Image src={p.src} alt={p.alt} widths={[400, 700, 1000]} sizes="(min-width: 768px) 50vw, 100vw" class="gallery__img" />
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <NextPages current="/conoce-a-ligia" />
+</BaseLayout>
+
+<style>
+  .hero-facts { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 28px 0 0; padding: 0; }
+  .hero-facts li { padding: 8px 14px; border-radius: 999px; background: rgb(255 255 255 / 0.9); font-size: 0.875rem; }
+  .hero-facts strong { font-family: var(--font-display); font-weight: 500; }
+
+  .bio__draft { margin-bottom: 32px; }
+  .chapters { list-style: none; margin: 0; padding: 0; }
+  .chapter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    gap: 16px 64px;
+    padding: clamp(32px, 4vw, 48px) 0;
+    border-top: 1px solid var(--line);
+  }
+  .chapter:last-child { border-bottom: 1px solid var(--line); }
+  .chapter__head { display: flex; align-items: baseline; gap: 16px; }
+  .chapter__num { font-family: var(--font-display); font-size: 1.125rem; color: var(--orange-ink); }
+  .chapter__title { font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1.02; }
+  .chapter__text { display: grid; gap: 16px; font-size: 1.125rem; max-width: 60ch; }
+
+  .quote { background: var(--orange); padding-block: clamp(64px, 9vw, 120px); }
+  .quote__text { font-family: var(--font-display); font-size: clamp(2.25rem, 6vw, 4.75rem); line-height: 0.98; letter-spacing: -0.02em; max-width: 18ch; }
+  .quote__caption { display: inline-flex; align-items: center; gap: 12px; margin-top: 24px; font-size: 1.0625rem; }
+  .quote__caption::before { content: ''; width: 36px; height: 3px; background: var(--ink); border-radius: 2px; }
+
+  .values__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; list-style: none; margin: 40px 0 0; padding: 0; }
+  .value { display: grid; gap: 12px; align-content: start; padding: 28px; border-radius: var(--radius); background: var(--surface); }
+  .value__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--orange); }
+  .value__title { font-size: 1.625rem; }
+  .value p { color: var(--ink-soft); }
+
+  .gallery { padding-bottom: 0; }
+  .gallery .h2 { margin-bottom: 40px; }
+  .gallery__grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: clamp(180px, 20vw, 300px); grid-auto-flow: dense; gap: 8px; list-style: none; margin: 0; padding: 0 8px; }
+  .gallery__item { overflow: hidden; border-radius: 12px; }
+  .gallery__item--1 { grid-column: span 2; grid-row: span 2; }
+  .gallery__item--3 { grid-column: span 2; }
+  .gallery__img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; transition: transform 600ms var(--ease); }
+  .gallery__item:hover .gallery__img { transform: scale(1.04); }
+
+  @media (max-width: 1023px) { .values__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 767px) {
+    .chapter { grid-template-columns: 1fr; }
+    .values__grid { grid-template-columns: 1fr; }
+    .gallery__grid { grid-template-columns: 1fr 1fr; grid-auto-rows: 180px; }
+    .gallery__item--1, .gallery__item--3 { grid-column: span 2; grid-row: span 1; }
+  }
+</style>

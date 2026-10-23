@@ -1,0 +1,78 @@
+---
+import { timeline, trajectory } from '../content/site';
+import SourceLink from './SourceLink.astro';
+import DetailDialog from './DetailDialog.astro';
+import Icon from './Icon.astro';
+---
+<section class="section tl" aria-labelledby="tl-title">
+  <div class="container">
+    <div class="tl__head" data-reveal>
+      <h2 id="tl-title" class="tl__title">{trajectory.timelineTitle}</h2>
+      <p class="tl__note"><Icon name="info" size={18} /> {trajectory.timelineNote}</p>
+    </div>
+
+    <ol class="tl__list">
+      {timeline.map((item, i) => (
+        <li class="tl__item" data-reveal style={`--delay:${i * 80}ms`}>
+          <span class="tl__dot" aria-hidden="true"></span>
+          <article class="tl__card">
+            <p class="tl__year">{item.yearLabel}</p>
+            <h3 class="tl__name">{item.title}</h3>
+            <p class="tl__summary">{item.summary}</p>
+            <div class="tl__foot">
+              {!item.verified && <span class="tag tag--pending">Pendiente de verificación</span>}
+              {item.sources.length > 0 && (
+                <button class="tl__more" type="button" data-dialog-open={`hito-${item.id}`}>
+                  Ver fuentes <Icon name="arrow-right" size={16} />
+                </button>
+              )}
+            </div>
+          </article>
+        </li>
+      ))}
+    </ol>
+  </div>
+
+  {timeline.filter((t) => t.sources.length > 0).map((item) => (
+    <DetailDialog id={`hito-${item.id}`} title={item.title} eyebrow={item.yearLabel}>
+      <p>{item.summary}</p>
+      {item.note && <p class="detail__note"><Icon name="info" size={18} /> {item.note}</p>}
+      <div>
+        <h4>Fuentes</h4>
+        <ul class="detail__sources">
+          {item.sources.map((s) => <li><SourceLink source={s} /></li>)}
+        </ul>
+      </div>
+    </DetailDialog>
+  ))}
+</section>
+
+<style>
+  .tl__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px 40px; margin-bottom: 48px; }
+  .tl__title { font-size: clamp(2rem, 4.4vw, 3.5rem); text-transform: uppercase; }
+  .tl__note { display: flex; gap: 8px; max-width: 44ch; color: var(--ink-soft); font-size: 0.9375rem; }
+  .tl__note :global(svg) { flex-shrink: 0; margin-top: 3px; color: var(--orange-ink); }
+
+  .tl__list { position: relative; list-style: none; margin: 0; padding: 0; }
+  .tl__list::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: linear-gradient(var(--orange), var(--gray)); transform: translateX(-50%); }
+  .tl__item { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding-bottom: 32px; }
+  .tl__item:nth-child(odd) .tl__card { grid-column: 1; margin-right: 56px; }
+  .tl__item:nth-child(even) .tl__card { grid-column: 2; margin-left: 56px; }
+  .tl__dot { position: absolute; top: 30px; left: 50%; width: 20px; height: 20px; border-radius: 50%; background: var(--white); border: 5px solid var(--orange); transform: translateX(-50%); }
+  .tl__card { padding: 28px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); transition: transform 250ms var(--ease), box-shadow 250ms var(--ease); }
+  .tl__card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .tl__year { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--ink); color: var(--white); font-size: 0.875rem; }
+  .tl__name { font-size: clamp(1.375rem, 2.4vw, 1.75rem); line-height: 1.1; margin-top: 16px; }
+  .tl__summary { margin-top: 10px; color: var(--ink-soft); }
+  .tl__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
+  .tl__more { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--orange-ink); font-size: 0.9375rem; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+  .tl__more:hover { color: var(--ink); }
+
+  @media (max-width: 767px) {
+    .tl__list::before { left: 9px; transform: none; }
+    .tl__item { grid-template-columns: 1fr; padding-left: 40px; }
+    .tl__item:nth-child(n) .tl__card { grid-column: 1; margin: 0; }
+    .tl__dot { left: 0; transform: none; }
+    .tl__card { padding: 22px; }
+  }
+</style>

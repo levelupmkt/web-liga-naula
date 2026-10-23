@@ -1,0 +1,388 @@
+---
+import QRCode from 'qrcode';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import {
+  surveys, surveyResults, sectores, parroquias, optionsOf, AGE_RANGES, ANON_THRESHOLD,
+  STATUS_LABEL, Q_TYPE_LABEL, formatNum, formatShortDate, type Survey,
+} from '../../../content/admin-demo';
+
+export function getStaticPaths() {
+  return surveys.map((survey) => ({ params: { id: survey.id }, props: { survey } }));
+}
+
+interface Props { survey: Survey }
+const { survey: s } = Astro.props;
+const r = surveyResults(s);
+const publicUrl = new URL(`/e/${s.slug}`, Astro.site).toString();
+const qrSvg = await QRCode.toString(publicUrl, { type: 'svg', margin: 1, color: { dark: '#161616', light: '#ffffff' } });
+
+// Datos para los cálculos en el navegador
+const payload = {
+  threshold: ANON_THRESHOLD,
+  ages: AGE_RANGES,
+  sectores: sectores.map((x) => ({ p: x.parroquiaId, parroquia: x.parroquia, barrio: x.barrio })),
+  parroquias: parroquias.map((p) => ({ id: p.id, nombre: p.nombre })),
+  preguntas: s.preguntas.map((q) => ({ id: q.id, tipo: q.tipo, enunciado: q.enunciado, opciones: optionsOf(q) })),
+  byQuestion: r.byQuestion,
+  participacion: r.participacion,
+  texts: r.texts,
+  titulo: s.titulo,
+};
+
+// Mini gráfico de participación diaria
+const tl = r.timeline;
+const max = Math.max(...tl.map((t) => t.n), 1);
+const W = 600, H = 120;
+const barW = tl.length ? (W / tl.length) * 0.7 : 0;
+---
+<AdminLayout title={s.titulo} roles={['admin', 'analista', 'lector']}>
+  <div class="page-head">
+    <div>
+      <a class="small muted back" href="/admin/encuestas"><Icon name="arrow-left" size={14} /> Encuestas</a>
+      <h1>{s.titulo}</h1>
+      <p class="meta">
+        <span class={`badge badge--${s.estado}`}>{STATUS_LABEL[s.estado]}</span>
+        <span>{formatShortDate(s.abre)} – {formatShortDate(s.cierra)}</span>
+        <span>· {s.preguntas.length} preguntas</span>
+        <span>· creada por {s.creadaPor}</span>
+      </p>
+    </div>
+    <div class="page-head__actions">
+      <a class="abtn" href="/admin/encuestas/nueva" data-roles="admin,analista"><Icon name="edit" size={16} /> Editar</a>
+      {s.estado === 'activa' && <button class="abtn" type="button" data-roles="admin,analista" data-demo="Demo: la encuesta quedaría pausada y el enlace mostraría un aviso"><Icon name="pause" size={16} /> Pausar</button>}
+      {s.estado === 'pausada' && <button class="abtn" type="button" data-roles="admin,analista" data-demo="Demo: la encuesta volvería a estar activa"><Icon name="play" size={16} /> Reanudar</button>}
+      {r.total > 0 && <button class="abtn abtn--orange" type="button" data-export><Icon name="download" size={16} /> Exportar CSV</button>}
+    </div>
+  </div>
+
+  <div class="grid grid--main">
+    <div class="col">
+      {r.total > 0 ? (
+        <>
+          <section class="panel filters" aria-label="Filtros">
+            <div class="filters__row">
+              <span class="filters__label"><Icon name="filter" size={16} /> Filtrar</span>
+              <label class="afield"><span class="sr-only">Parroquia</span>
+                <select class="aselect" data-f="parroquia">
+                  <option value="">Todas las parroquias</option>
+                  {parroquias.map((p) => <option value={p.id}>{p.nombre}</option>)}
+                </select>
+              </label>
+              <label class="afield"><span class="sr-only">Barrio</span>
+                <select class="aselect" data-f="barrio" disabled><option value="">Todos los barrios</option></select>
+              </label>
+              <label class="afield"><span class="sr-only">Rango de edad</span>
+                <select class="aselect" data-f="edad">
+                  <option value="">Todas las edades</option>
+                  {AGE_RANGES.map((a, i) => <option value={i}>{a} años</option>)}
+                </select>
+              </label>
+              <button class="abtn abtn--ghost abtn--sm" type="button" data-reset>Limpiar</button>
+            </div>
+          </section>
+
+          <div class="grid kpis">
+            <div class="panel kpi"><span class="kpi__label">Participaciones</span><span class="kpi__value" data-k="total"></span></div>
+            <div class="panel kpi"><span class="kpi__label">Zona con más respuestas</span><span class="kpi__value kpi__value--sm" data-k="top"></span></div>
+            <div class="panel kpi"><span class="kpi__label">Grupos protegidos (&lt; {ANON_THRESHOLD})</span><span class="kpi__value" data-k="anon"></span></div>
+          </div>
+
+          <div class="anon-block panel" hidden data-anon-block>
+            <Icon name="shield" size={24} />
+            <div>
+              <strong>Menos de {ANON_THRESHOLD} respuestas con este filtro</strong>
+              <p class="small muted">Para proteger el anonimato, los resultados no se desglosan. Amplía el filtro.</p>
+            </div>
+          </div>
+
+          <div class="questions" data-questions></div>
+
+          <section class="panel" data-breakdown-panel>
+            <div class="panel__head">
+              <h2 class="panel__title" data-breakdown-title>Participación por parroquia</h2>
+              <span class="small muted">Grupos con menos de {ANON_THRESHOLD} se muestran como «menos de {ANON_THRESHOLD}»</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th data-breakdown-col>Parroquia</th><th class="num">Participaciones</th><th>Respuesta más frecuente (P1)</th></tr></thead>
+                <tbody data-breakdown></tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : (
+        <section class="panel empty-state">
+          <span class="no-access__icon"><Icon name="chart" size={24} /></span>
+          <h2>Aún no hay respuestas</h2>
+          <p class="muted">Esta encuesta está en borrador. Cuando la publiques, verás aquí los resultados en tiempo real.</p>
+          <ol class="draft-qs">
+            {s.preguntas.map((q) => <li><strong>{q.enunciado}</strong> <span class="badge badge--plain">{Q_TYPE_LABEL[q.tipo]}</span></li>)}
+          </ol>
+          <a class="abtn abtn--orange" href="/admin/encuestas/nueva" data-roles="admin,analista">Editar y publicar</a>
+        </section>
+      )}
+    </div>
+
+    <aside class="col">
+      <section class="panel share">
+        <h2 class="panel__title">Compartir</h2>
+        <div class="share__link">
+          <input class="ainput" readonly value={publicUrl} aria-label="Enlace público" />
+          <button class="abtn abtn--icon" type="button" data-copy={publicUrl} aria-label="Copiar enlace"><Icon name="copy" size={18} /></button>
+        </div>
+        <div class="share__qr" set:html={qrSvg} data-qr></div>
+        <div class="share__actions">
+          <button class="abtn abtn--sm" type="button" data-qr-download={s.slug}><Icon name="qr" size={16} /> Descargar QR</button>
+          <a class="abtn abtn--sm" href={`/e/${s.slug}`} target="_blank" rel="noopener"><Icon name="eye" size={16} /> Abrir</a>
+        </div>
+        <div class="og">
+          <p class="small muted">Vista previa al compartir en WhatsApp</p>
+          <div class="og__card">
+            <span class="og__img" aria-hidden="true"><span>L</span></span>
+            <span class="og__text"><strong>{s.titulo}</strong><span>{s.descripcion}</span><small>ligianaula.example</small></span>
+          </div>
+        </div>
+      </section>
+
+      {tl.length > 0 && (
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title">Participación diaria</h2>
+            <span class="small muted">todas las zonas</span>
+          </div>
+          <svg class="tl-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Participación diaria, máximo ${max}`}>
+            {tl.map((t, i) => {
+              const h = Math.max(2, (t.n / max) * (H - 4));
+              return <rect x={(i * W) / tl.length} y={H - h} width={barW} height={h} rx="2"><title>{formatShortDate(t.fecha)}: {t.n}</title></rect>;
+            })}
+          </svg>
+          <div class="tl-axis"><span>{formatShortDate(tl[0].fecha)}</span><span>{formatShortDate(tl.at(-1)!.fecha)}</span></div>
+        </section>
+      )}
+
+      <section class="panel privacy">
+        <h2 class="panel__title"><Icon name="shield" size={18} /> Privacidad</h2>
+        <ul class="small">
+          <li>Las respuestas no tienen ningún dato del votante.</li>
+          <li>El correo se guarda cifrado solo para evitar votos duplicados.</li>
+          <li>Ninguna página pública muestra estos resultados.</li>
+        </ul>
+        {s.estado === 'cerrada' && (
+          <button class="abtn abtn--sm abtn--danger" type="button" data-roles="admin" data-demo="Demo: se borrarían los datos de verificación de esta encuesta"><Icon name="trash" size={16} /> Borrar datos de verificación</button>
+        )}
+      </section>
+    </aside>
+  </div>
+
+  <script type="application/json" id="results-data" set:html={JSON.stringify(payload)}></script>
+</AdminLayout>
+
+<script>
+  type Agg = [number, number, number, number];
+  type Data = {
+    threshold: number; ages: string[];
+    sectores: Array<{ p: string; parroquia: string; barrio: string }>;
+    parroquias: Array<{ id: string; nombre: string }>;
+    preguntas: Array<{ id: string; tipo: string; enunciado: string; opciones: string[] }>;
+    byQuestion: Record<string, Agg[]>; participacion: Agg[];
+    texts: Array<{ q: string; sector: number; texto: string; hora: string }>;
+    titulo: string;
+  };
+  const el = document.getElementById('results-data');
+  const toast = (m: string) => (window as any).demoToast(m);
+
+  // Compartir: copiar enlace y descargar QR (funcionan en todas las encuestas)
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(b.dataset.copy!); } catch {}
+      toast('Enlace copiado');
+    }),
+  );
+  document.querySelector<HTMLButtonElement>('[data-qr-download]')?.addEventListener('click', (e) => {
+    const svg = document.querySelector('[data-qr] svg')!.outerHTML;
+    download(new Blob([svg], { type: 'image/svg+xml' }), `qr-${(e.currentTarget as HTMLElement).dataset.qrDownload}.svg`);
+  });
+  function download(blob: Blob, name: string) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  const qWrap = document.querySelector<HTMLElement>('[data-questions]');
+  if (el && qWrap) {
+    const D: Data = JSON.parse(el.textContent!);
+    const T = D.threshold;
+    const fP = document.querySelector<HTMLSelectElement>('[data-f="parroquia"]')!;
+    const fB = document.querySelector<HTMLSelectElement>('[data-f="barrio"]')!;
+    const fE = document.querySelector<HTMLSelectElement>('[data-f="edad"]')!;
+    const fmt = (n: number) => n.toLocaleString('es-EC');
+    const pct = (n: number, d: number) => (d ? Math.round((n / d) * 1000) / 10 : 0);
+    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    const match = (si: number, ai: number) => {
+      const s = D.sectores[si];
+      if (fP.value && s.p !== fP.value) return false;
+      if (fB.value && String(si) !== fB.value) return false;
+      if (fE.value && String(ai) !== fE.value) return false;
+      return true;
+    };
+    const lt = `menos de ${T}`;
+
+    function compute() {
+      const total = D.participacion.reduce((a, [si, ai, , n]) => a + (match(si, ai) ? n : 0), 0);
+      const perQ = D.preguntas.map((q) => {
+        const counts = new Array(q.opciones.length).fill(0);
+        (D.byQuestion[q.id] ?? []).forEach(([si, ai, oi, n]) => match(si, ai) && (counts[oi] += n));
+        return { q, counts };
+      });
+      // Desglose por parroquia o por barrio
+      const byParroquia = !fP.value;
+      const groups = new Map<string, { label: string; n: number; top: number[] }>();
+      const q1 = D.preguntas.find((q) => q.tipo !== 'texto');
+      D.participacion.forEach(([si, ai, , n]) => {
+        if (!match(si, ai)) return;
+        const s = D.sectores[si];
+        const key = byParroquia ? s.p : String(si);
+        const g = groups.get(key) ?? { label: byParroquia ? s.parroquia : s.barrio, n: 0, top: new Array(q1?.opciones.length ?? 0).fill(0) };
+        g.n += n;
+        groups.set(key, g);
+      });
+      if (q1) (D.byQuestion[q1.id] ?? []).forEach(([si, ai, oi, n]) => {
+        if (!match(si, ai)) return;
+        const key = byParroquia ? D.sectores[si].p : String(si);
+        groups.get(key)!.top[oi] += n;
+      });
+      return { total, perQ, groups: [...groups.values()].sort((a, b) => b.n - a.n), byParroquia, q1 };
+    }
+
+    function render() {
+      const { total, perQ, groups, byParroquia, q1 } = compute();
+      const protectedAll = total < T;
+      document.querySelector('[data-k="total"]')!.textContent = protectedAll ? lt : fmt(total);
+      const top = groups.find((g) => g.n >= T);
+      document.querySelector('[data-k="top"]')!.textContent = top ? top.label : '—';
+      document.querySelector('[data-k="anon"]')!.textContent = String(groups.filter((g) => g.n < T).length);
+      document.querySelector<HTMLElement>('[data-anon-block]')!.hidden = !protectedAll;
+      qWrap!.hidden = protectedAll;
+      document.querySelector<HTMLElement>('[data-breakdown-panel]')!.hidden = protectedAll;
+      if (protectedAll) return;
+
+      qWrap!.innerHTML = perQ.map(({ q, counts }, i) => {
+        let body = '';
+        if (q.tipo === 'texto') {
+          const list = D.texts.filter((t) => t.q === q.id && (!fP.value || D.sectores[t.sector].p === fP.value) && (!fB.value || String(t.sector) === fB.value));
+          body = list.length
+            ? `<ul class="answers">${list.slice(0, 12).map((t) => `<li>“${esc(t.texto)}”<span class="small muted">${esc(D.sectores[t.sector].parroquia)} · ${t.hora.slice(0, 10)}</span></li>`).join('')}</ul>
+               <p class="small muted">${list.length} respuestas abiertas · se muestran sin datos de quien respondió</p>`
+            : '<p class="muted">Sin respuestas abiertas para este filtro.</p>';
+        } else {
+          const sum = counts.reduce((a, b) => a + b, 0);
+          const denom = q.tipo === 'multiple' ? total : sum;
+          const maxC = Math.max(...counts);
+          const avg = q.tipo === 'escala' && sum ? counts.reduce((a, c, k) => a + c * (k + 1), 0) / sum : null;
+          body = `${avg !== null ? `<p class="avg"><strong>${avg.toFixed(1).replace('.', ',')}</strong> promedio de 5</p>` : ''}
+            <ul class="bars">${q.opciones.map((o, k) => `
+              <li class="bar ${counts[k] === maxC ? 'bar--top' : ''}">
+                <div class="bar__row"><span>${q.tipo === 'escala' ? '★'.repeat(k + 1) : esc(o)}</span>
+                <span class="bar__val">${counts[k] < T ? `<span class="anon">${lt}</span>` : `<strong>${pct(counts[k], denom).toString().replace('.', ',')}%</strong> · ${fmt(counts[k])}`}</span></div>
+                <div class="bar__track"><div class="bar__fill" style="width:${counts[k] < T ? 0 : pct(counts[k], denom)}%"></div></div>
+              </li>`).join('')}
+            </ul>
+            ${q.tipo === 'multiple' ? '<p class="small muted">Respuesta múltiple: los porcentajes suman más de 100%.</p>' : ''}`;
+        }
+        return `<section class="panel qcard"><div class="panel__head"><h2 class="panel__title"><span class="qnum">P${i + 1}</span> ${esc(q.enunciado)}</h2><span class="badge badge--plain">${({ unica: 'Opción única', multiple: 'Opción múltiple', escala: 'Escala 1–5', sino: 'Sí / No', texto: 'Texto abierto' } as Record<string, string>)[q.tipo]}</span></div>${body}</section>`;
+      }).join('');
+
+      document.querySelector('[data-breakdown-title]')!.textContent = byParroquia ? 'Participación por parroquia' : 'Participación por barrio';
+      document.querySelector('[data-breakdown-col]')!.textContent = byParroquia ? 'Parroquia' : 'Barrio';
+      document.querySelector('[data-breakdown]')!.innerHTML = groups.map((g) => {
+        const ti = g.top.indexOf(Math.max(...g.top));
+        return `<tr><td>${esc(g.label)}</td>
+          <td class="num">${g.n < T ? `<span class="anon">${lt}</span>` : fmt(g.n)}</td>
+          <td>${g.n < T || !q1 ? '<span class="muted">—</span>' : esc(q1.opciones[ti])}</td></tr>`;
+      }).join('');
+    }
+
+    function fillBarrios() {
+      fB.innerHTML = '<option value="">Todos los barrios</option>' + D.sectores
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) => s.p === fP.value)
+        .map(({ s, i }) => `<option value="${i}">${esc(s.barrio)}</option>`).join('');
+      fB.disabled = !fP.value;
+    }
+    fP.addEventListener('change', () => { fillBarrios(); render(); });
+    fB.addEventListener('change', render);
+    fE.addEventListener('change', render);
+    document.querySelector('[data-reset]')!.addEventListener('click', () => {
+      fP.value = ''; fE.value = ''; fillBarrios(); render();
+    });
+
+    // Exportar CSV con el filtro actual y el umbral aplicado
+    document.querySelector('[data-export]')?.addEventListener('click', () => {
+      const { total, perQ, groups, byParroquia } = compute();
+      const rows: string[][] = [['Encuesta', D.titulo], ['Filtro parroquia', fP.selectedOptions[0].text], ['Filtro barrio', fB.selectedOptions[0]?.text ?? ''], ['Filtro edad', fE.selectedOptions[0].text], ['Participaciones', total < T ? lt : String(total)], []];
+      if (total >= T) {
+        rows.push(['Pregunta', 'Opción', 'Conteo']);
+        perQ.filter(({ q }) => q.tipo !== 'texto').forEach(({ q, counts }) => q.opciones.forEach((o, k) => rows.push([q.enunciado, o, counts[k] < T ? lt : String(counts[k])])));
+        rows.push([], [byParroquia ? 'Parroquia' : 'Barrio', 'Participaciones']);
+        groups.forEach((g) => rows.push([g.label, g.n < T ? lt : String(g.n)]));
+      }
+      const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      download(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `resultados-${D.titulo.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`);
+      toast('CSV exportado con los filtros actuales');
+    });
+
+    render();
+  }
+</script>
+
+<style>
+  .back { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; margin-bottom: 6px; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.875rem; }
+  .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; }
+  .filters { padding: 14px 16px; }
+  .filters__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .filters__label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--ink-soft); }
+  .filters .afield { min-width: 170px; flex: 1; }
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi__value--sm { font-size: 1.375rem; line-height: 1.2; }
+  .anon-block { display: flex; align-items: center; gap: 16px; border-style: dashed; color: var(--ink-soft); }
+  .anon-block strong { color: var(--ink); }
+  .questions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  :global(.qnum) { display: inline-grid; place-items: center; min-width: 30px; height: 26px; padding: 0 6px; margin-right: 6px; border-radius: 6px; background: var(--orange); font-size: 0.8125rem; vertical-align: 2px; }
+  :global(.qcard .panel__title) { font-size: 1.125rem; max-width: 60ch; }
+  :global(.avg) { margin-bottom: 14px; color: var(--ink-soft); }
+  :global(.avg strong) { font-family: var(--font-display); font-weight: 500; font-size: 2rem; color: var(--ink); margin-right: 4px; }
+  :global(.answers) { display: grid; gap: 8px; list-style: none; margin: 0 0 10px; padding: 0; }
+  :global(.answers li) { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--surface); font-size: 0.9375rem; }
+
+  .empty-state { display: grid; justify-items: center; gap: 12px; padding: 48px 24px; text-align: center; }
+  .draft-qs { display: grid; gap: 8px; margin: 8px 0; padding: 0; list-style: none; text-align: left; }
+  .draft-qs li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .share { display: grid; gap: 14px; }
+  .share__link { display: flex; gap: 8px; }
+  .share__link .ainput { font-size: 0.8125rem; }
+  .share__qr { width: 180px; margin-inline: auto; padding: 8px; border-radius: 12px; border: 1px solid var(--line); }
+  .share__qr :global(svg) { display: block; width: 100%; height: auto; }
+  .share__actions { display: flex; justify-content: center; gap: 8px; }
+  .og { display: grid; gap: 6px; }
+  .og__card { display: grid; grid-template-columns: 72px 1fr; overflow: hidden; border-radius: 10px; background: #e7f6e1; border: 1px solid #cfe9c4; }
+  .og__img { display: grid; place-items: center; background: var(--orange); }
+  .og__img span { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--orange); font-family: var(--font-display); font-size: 1.25rem; }
+  .og__text { display: grid; gap: 2px; padding: 8px 10px; font-size: 0.75rem; line-height: 1.3; }
+  .og__text strong { font-size: 0.8125rem; }
+  .og__text small { color: var(--ink-soft); }
+
+  .tl-chart { width: 100%; height: auto; display: block; fill: var(--orange); }
+  .tl-chart rect:hover { fill: var(--ink); }
+  .tl-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.75rem; color: var(--ink-soft); }
+  .privacy { display: grid; gap: 10px; }
+  .privacy .panel__title { display: flex; align-items: center; gap: 8px; font-size: 1.0625rem; }
+  .privacy ul { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: var(--ink-soft); }
+
+  @media (max-width: 640px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+</style>
